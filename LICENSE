@@ -1,0 +1,82 @@
+PROPRIETARY SOFTWARE LICENSE
+
+Copyright (c) 2024-2026 RSA Data Solutions Inc.
+All Rights Reserved.
+
+Author: Sasikumar Manickam
+
+TERMS AND CONDITIONS
+
+1. OWNERSHIP
+   This software and associated documentation files (the "Software") are the 
+   exclusive property of RSA Data Solutions Inc. and Sasikumar Manickam 
+   (the "Author"). All rights, title, and interest in and to the Software, 
+   including all intellectual property rights, are and shall remain with 
+   RSA Data Solutions Inc. and the Author.
+
+2. COMMERCIAL USE
+   This Software is proprietary and intended for commercial purposes only. 
+   This is NOT open source software. No license is granted for any use 
+   without explicit written permission from RSA Data Solutions Inc.
+
+3. RESTRICTIONS
+   You may NOT, without prior written permission from RSA Data Solutions Inc.:
+   a) Use, copy, modify, merge, publish, distribute, sublicense, or sell 
+      copies of the Software
+   b) Reverse engineer, decompile, or disassemble the Software
+   c) Remove or alter any proprietary notices or labels on the Software
+   d) Use the Software for any purpose other than as explicitly authorized
+   e) Transfer, assign, or sublicense your rights under this license
+
+4. CONTRIBUTIONS AND PULL REQUESTS
+   a) The Author may, at their sole discretion, accept pull requests, 
+      suggestions, modifications, or other contributions from third parties.
+   b) By submitting any contribution, contributors agree that:
+      - All submitted contributions become the exclusive property of 
+        RSA Data Solutions Inc. and the Author
+      - The Author has the absolute right to accept, modify, or reject 
+        any contribution without obligation or compensation
+      - Contributors waive all rights to submitted contributions
+      - No compensation or attribution is owed for accepted contributions
+   c) The Author reserves 100% right to absorb, modify, or reject any 
+      changes submitted by others.
+
+5. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
+   RSA DATA SOLUTIONS INC. OR THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR 
+   OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+   ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR 
+   OTHER DEALINGS IN THE SOFTWARE.
+
+6. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL RSA DATA SOLUTIONS INC. OR THE AUTHOR BE LIABLE FOR ANY 
+   SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL DAMAGES WHATSOEVER 
+   (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS, 
+   BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR ANY OTHER 
+   PECUNIARY LOSS) ARISING OUT OF THE USE OF OR INABILITY TO USE THIS 
+   SOFTWARE.
+
+7. TERMINATION
+   This license is effective until terminated. Your rights under this license 
+   will terminate automatically without notice if you fail to comply with any 
+   term of this license. Upon termination, you must destroy all copies of the 
+   Software in your possession.
+
+8. GOVERNING LAW
+   This license shall be governed by and construed in accordance with the 
+   laws applicable to RSA Data Solutions Inc.'s jurisdiction, without regard 
+   to its conflict of law provisions.
+
+9. ENTIRE AGREEMENT
+   This license constitutes the entire agreement between the parties 
+   concerning the Software and supersedes all prior or contemporaneous 
+   agreements, representations, warranties and understandings.
+
+For licensing inquiries, please contact:
+RSA Data Solutions Inc.
+Author: Sasikumar Manickam
+
+UNAUTHORIZED USE, REPRODUCTION, OR DISTRIBUTION IS STRICTLY PROHIBITED 
+AND MAY RESULT IN SEVERE CIVIL AND CRIMINAL PENALTIES.

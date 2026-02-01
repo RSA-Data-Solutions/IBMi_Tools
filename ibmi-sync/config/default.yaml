@@ -1,0 +1,232 @@
+# IBM i Unified Sync Tool - Default Configuration
+# Location: ~/.ibmi/config.yaml
+# This file is auto-generated on first run
+
+# Default profile to use when none is specified
+default_profile: "production"
+
+# Profile definitions
+profiles:
+  production:
+    # IBM i system connection settings
+    host: "<pub400.com>"
+    user: "<UserID>"
+
+    # Member sync settings (for RPGLE development)
+    # Used when working with library/source file/member structure
+    library: "<Library>"
+    srcfile: "<SourceFile>"
+
+    # File sync settings
+    # Base directory where files are synced to/from on IBM i
+    remote_base: "/home/<UserID>"
+    local_dir: "~/ibmi-sync-data/production"
+
+    # Git integration settings (optional)
+    git_repo: ""
+    git_branch: "main"
+
+    # Profile description
+    description: "Production IBM i system"
+
+  # Example: Development profile
+  # development:
+  #   host: "dev-as400"
+  #   user: "DEVUSER"
+  #   library: "DEVLIB"
+  #   srcfile: "QRPGLESRC"
+  #   remote_base: "/home/DEVUSER"
+  #   local_dir: "~/ibmi-sync-data/development"
+  #   git_repo: "https://github.com/org/dev-repo.git"
+  #   git_branch: "develop"
+  #   description: "Development IBM i system"
+
+# SSH session management settings
+session:
+  # How long to keep SSH connection alive (4h = 4 hours)
+  # Format: Ns (seconds), Nm (minutes), Nh (hours), Nd (days)
+  control_persist: "4h"
+
+  # Where SSH control socket is stored
+  # %r = remote username, %h = hostname, %p = port
+  control_path: "~/.ibmi/ssh-%r@%h:%p"
+
+  # Connection timeout in seconds
+  connect_timeout: 10
+
+  # Keep-alive interval in seconds
+  # Sends ServerAlive message to prevent connection timeout
+  server_alive_interval: 60
+
+  # Max keep-alive failures before disconnecting
+  server_alive_count_max: 3
+
+# User interface settings
+ui:
+  # Enable colored output
+  colors: true
+
+  # Show progress bars during sync operations
+  progress: true
+
+  # Confirm before destructive operations (push, delete)
+  confirm_destructive: true
+
+  # Use pager for long output
+  use_pager: false
+
+# Logging settings
+logging:
+  # Enable logging to file
+  enabled: true
+
+  # Log directory location
+  log_dir: "~/.ibmi/logs"
+
+  # Log level: debug, info, warning, error
+  level: "info"
+
+  # Rotate logs when larger than this (in MB)
+  max_size: 10
+
+  # Keep this many rotated logs
+  max_files: 5
+
+# Sync operation settings
+sync:
+  # Automatically backup files before overwriting
+  auto_backup: true
+
+  # Backup directory location
+  backup_dir: "~/.ibmi/backups"
+
+  # Exclude patterns (like .gitignore)
+  # These files/directories will not be synced
+  exclude_patterns:
+    - "*.tmp"
+    - "*.log"
+    - ".DS_Store"
+    - "node_modules/"
+    - ".git/"
+    - "__pycache__/"
+
+  # Follow symbolic links
+  follow_symlinks: false
+
+  # Preserve file permissions
+  preserve_permissions: true
+
+  # Preserve file timestamps
+  preserve_timestamps: true
+
+  # Number of parallel transfers
+  parallel_transfers: 1
+
+  # Bandwidth limit in KB/s (0 = unlimited)
+  bandwidth_limit: 0
+
+# Member sync settings (IBM i specific)
+members:
+  # Directory where local member copies are stored
+  local_dir: "~/ibmi-sync-data/production/members"
+
+  # File extension for local member files
+  file_extension: ".rpgle"
+
+  # Compile options
+  compile:
+    # Default compilation command
+    default_cmd: "CRTBNDRPG"
+
+    # Compilation parameters
+    # These can be overridden per-compile
+    debug: "DBGVIEW(*SOURCE)"
+    options: "OPTION(*EVENTF)"
+
+# File sync settings
+files:
+  # Directory where local file copies are stored
+  local_dir: "~/ibmi-sync-data/production/files"
+
+  # Auto-commit changes to Git
+  auto_commit: false
+
+  # Watch for local changes and auto-sync
+  watch_mode: false
+
+  # Watch interval in seconds
+  watch_interval: 5
+
+# Git settings
+git:
+  # Auto-push after commit
+  auto_push: false
+
+  # Default commit message for automated commits
+  default_message: "Synced from IBM i"
+
+  # Author name (if empty, uses git config)
+  author_name: ""
+
+  # Author email (if empty, uses git config)
+  author_email: ""
+
+  # Create branch for sync operations
+  create_branch: false
+
+  # Merge after sync
+  auto_merge: false
+
+# Performance settings
+performance:
+  # Number of concurrent operations
+  concurrency: 2
+
+  # Retry failed operations
+  retry_count: 3
+
+  # Delay between retries (in seconds)
+  retry_delay: 2
+
+  # Connection timeout
+  timeout: 30
+
+  # SSH multiplexing
+  ssh_multiplexing: true
+
+# Notification settings
+notifications:
+  # Enable notifications
+  enabled: false
+
+  # Notification method: email, slack, webhook
+  method: "email"
+
+  # Notification email
+  email: ""
+
+  # Slack webhook URL
+  slack_webhook: ""
+
+  # Notify on success
+  on_success: false
+
+  # Notify on failure
+  on_failure: true
+
+# Advanced settings
+advanced:
+  # Enable debug mode
+  debug: false
+
+  # Keep temporary files after sync
+  keep_temp_files: false
+
+  # Dry run by default (don't actually modify files)
+  dry_run: false
+
+  # Verbose output
+  verbose: false
+
+  # Log SSH commands
+  log_ssh: false

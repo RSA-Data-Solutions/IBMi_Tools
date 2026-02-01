@@ -1,0 +1,25 @@
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+tmpclaude*
+
+# Log files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files (keep .vscode in subfolders)
+.idea/
+
+# Runtime files
+ibmi-sync/logs/
+ibmi-sync/.git/
+.claude/
+
+# Archives
+*.zip
+*.tar.gz
