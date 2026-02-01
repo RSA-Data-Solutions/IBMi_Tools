@@ -74,7 +74,7 @@ IBMi_Tools/
 
 ## Key Features Delivered
 
-### Member Operations (RPGLE Development)
+### Member-Based Development (RPGLE, CLLE, SQL, PF, LF, etc.)
 - ✅ Pull members from IBM i
 - ✅ Push members to IBM i
 - ✅ Compile members on IBM i
@@ -84,7 +84,7 @@ IBMi_Tools/
 - ✅ Compare local vs remote
 - ✅ Delete members
 
-### File/Folder Operations (IFS Development)
+### File-Based Development (PHP, Python, Node.js, IFS Files)
 - ✅ Pull files and folders
 - ✅ Push files and folders
 - ✅ List remote directories
@@ -476,4 +476,4 @@ The tool is designed to save your team time through:
 
 **🎉 Congratulations! Your unified IBM i sync tool is ready to revolutionize your team's development workflow! 🚀**
 
-For the latest updates: https://github.com/msasikumar/IBMi_Tools
+For the latest updates: https://github.com/RSA-Data-Solutions/IBMi_Tools

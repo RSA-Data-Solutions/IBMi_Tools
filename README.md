@@ -10,18 +10,20 @@
 
 This repository contains two comprehensive toolsets for IBM i development:
 
-## 📦 Package 1: IBM i Member Sync (RPGLE Development)
+## 📦 Package 1: IBM i Member Sync (Member & File Development)
 
 **Location**: `ibm-i-sync-git-repo/`
 
-Syncs IBM i members (library/source file/member) with local filesystem for RPGLE development.
+Syncs IBM i members (library/source file/member) with local filesystem for member-based and file-based development. Supports RPGLE, CLLE, SQL, PF, LF, and other traditional IBM i source types.
 
 ### Features
 
-- Pull/push RPGLE members
+- Pull/push members (RPGLE, CLLE, SQL, PF, LF, and more)
 - Compile members on IBM i
+- Support for all IBM i source types
 - VS Code integration
 - Local development with AI tools
+- Dual development model support
 
 ### Quick Start
 
@@ -33,10 +35,46 @@ cd ibm-i-sync-git-repo
 
 ### Use Cases
 
-- RPGLE/SQLRPGLE development
-- Working with IBM i source members
+- Member-based development (RPGLE, CLLE, SQL, etc.)
+- File-based development (PHP, Python, Node.js, configs)
+- Working with IBM i source members (PF, LF, display files)
 - Compiling programs on IBM i
-- AI-assisted RPGLE coding
+- AI-assisted coding with modern editors
+- Mixed development workflows
+
+---
+
+## 🔄 Dual Development Model
+
+IBM i development supports **two complementary paradigms**:
+
+### Member-Based Development (Traditional)
+Working with IBM i source members through library/source file/member structure:
+- **RPGLE, SQLRPGLE** - RPG programs
+- **CLLE, CLP** - Control Language programs  
+- **SQL** - SQL procedures and functions
+- **PF, LF** - Physical and Logical files (DDS)
+- **DSPF, PRTF** - Display and Printer files
+- **CMD** - Command definitions
+
+**Use the Member Sync tool** for this traditional IBM i development model.
+
+### File-Based Development (Modern)
+Working with IFS files using standard file systems:
+- **PHP, Python, Node.js** - Modern web applications
+- **Shell scripts** - Automation and utilities
+- **Configuration files** - JSON, XML, YAML, properties
+- **HTML, CSS, JavaScript** - Web resources
+- **Markdown, text files** - Documentation
+
+**Use the File/Folder Sync tool** for this modern development model.
+
+### Hybrid Workflows
+Many teams use **both models simultaneously**:
+- Member-based for core business logic (RPGLE programs)
+- File-based for web interfaces (PHP/Node.js apps)
+- File-based for configuration and automation scripts
+- Version control (Git) for both paradigms
 
 ---
 
@@ -77,24 +115,34 @@ cd ibm-i-file-sync
 
 ### Use **IBM i Member Sync** when:
 
-- Working with RPGLE/SQLRPGLE source members
+**Member-Based Development:**
+- Working with RPGLE, SQLRPGLE, CLLE source members
+- Developing SQL procedures and functions
+- Creating/maintaining PF, LF, DSPF files
 - Need to compile programs on IBM i
 - Working with library/source file/member structure
 - Developing traditional IBM i programs
 
+**File-Based Development (via IFS):**
+- PHP, Python, Node.js applications in IFS
+- Configuration files and scripts
+- Modern web development on IBM i
+
 ### Use **File/Folder Sync** when:
 
-- Working with IFS files and folders
-- Need Git version control
-- Want to push to GitHub
-- Managing configuration files
-- Working with modern development projects
-- Need bidirectional folder sync
+- Working with IFS files and folders at scale
+- Need Git version control and GitHub integration
+- Want to push entire projects to GitHub
+- Managing complex directory structures
+- Need bidirectional folder synchronization
+- Working with multi-file modern projects
 
 ### Use Both when:
 
-- You have both RPGLE members and IFS projects
-- You want separate workflows for different types of work
+- **Hybrid Development**: RPGLE backend + PHP/Node.js frontend
+- **Mixed Workflows**: Members for programs + IFS for configs
+- **Multi-Paradigm Projects**: Traditional and modern code together
+- **Team Collaboration**: Different developers prefer different models
 
 ---
 

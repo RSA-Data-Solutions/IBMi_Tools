@@ -6,11 +6,14 @@ Welcome! This guide will help you get up and running quickly with the new unifie
 
 You now have a **single, unified tool** that combines:
 
-- Member sync (RPGLE development) ← from `sync_ibmi.sh`
-- File sync (IFS development) ← from `sync_files.sh`
-- Git integration (GitHub automation)
-- Session management (no password re-entry)
-- Multi-profile support (multiple IBM i systems)
+- **Member-based development** (RPGLE, CLLE, SQL, PF, LF, etc.) ← from `sync_ibmi.sh`
+- **File-based development** (PHP, Python, Node.js, configs) ← from `sync_files.sh`
+- **Git integration** (GitHub automation)
+- **Session management** (no password re-entry)
+- **Multi-profile support** (multiple IBM i systems)
+- **Dual development model** (traditional members AND modern files)
+
+Both traditional IBM i source members and modern IFS files work seamlessly with the same unified tool.
 
 All accessible globally as the `ibmi-sync` command.
 
@@ -20,7 +23,6 @@ All accessible globally as the `ibmi-sync` command.
 
 ```bash
 cd ibmi-sync
-c
 ./install.sh
 ```
 
@@ -78,10 +80,10 @@ ibmi-sync file list /home/youruser
 
 ## Common Tasks
 
-### Member Development (RPGLE)
+### Member Development (RPGLE, CLLE, SQL, PF, LF)
 
 ```bash
-# 1. Download a member
+# 1. Download a member (RPGLE)
 ibmi-sync member pull <Member>
 
 # 2. Edit it
@@ -95,7 +97,27 @@ ibmi-sync git commit "Fixed bug in <Member>"
 ibmi-sync git push
 ```
 
-### File Development (IFS)
+**Working with different member types:**
+
+```bash
+# CLLE program
+ibmi-sync session set --srcfile=<CLLESourceFile>
+ibmi-sync member pull <Member>     # Saves as <Member>.clle
+
+# SQL procedure
+ibmi-sync session set --srcfile=<SQLSourceFile>
+ibmi-sync member pull <Member>     # Saves as <Member>.sql
+
+# Physical file definition
+ibmi-sync session set --srcfile=<DDSSourceFile>
+ibmi-sync member pull <Member>     # Saves as <Member>.dds
+
+# Display file
+ibmi-sync session set --srcfile=<DSPFSourceFile>
+ibmi-sync member pull <Member>     # Saves as <Member>.dds
+```
+
+### File Development (PHP, Python, Node.js, IFS Files)
 
 ```bash
 # 1. Download a folder
@@ -110,6 +132,35 @@ ibmi-sync folder push myapp /home/user/myapp
 # 4. Commit
 ibmi-sync git commit "Updated application files"
 ibmi-sync git push
+```
+
+**Examples for different file types:**
+
+```bash
+# PHP web application
+ibmi-sync folder pull /www/mysite mysite
+# Edit PHP, HTML, CSS, JavaScript files
+ibmi-sync folder push mysite /www/mysite
+
+# Python scripts
+ibmi-sync file pull /home/user/scripts/process.py
+# Edit Python script
+ibmi-sync file push process.py /home/user/scripts/
+
+# Node.js application
+ibmi-sync folder pull /home/user/nodeapp nodeapp
+# Edit package.json, JavaScript files
+ibmi-sync folder push nodeapp /home/user/nodeapp
+
+# Configuration files
+ibmi-sync file pull /home/user/config/app.json
+# Edit JSON configuration
+ibmi-sync file push app.json /home/user/config/
+
+# Shell scripts
+ibmi-sync file pull /home/user/bin/deploy.sh
+# Edit shell script
+ibmi-sync file push deploy.sh /home/user/bin/
 ```
 
 ### Switching Between Systems

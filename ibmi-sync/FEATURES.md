@@ -450,4 +450,4 @@ isync member pull MEMBER
 
 **Version:** 1.1.0
 **Last Updated:** January 29, 2026
-**Repository:** https://github.com/msasikumar/IBMi_Tools
+**Repository:** https://github.com/RSA-Data-Solutions/IBMi_Tools

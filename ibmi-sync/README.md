@@ -2,13 +2,35 @@
 
 A modern, unified command-line tool for syncing IBM i members and files with your local development environment. Works seamlessly on WSL, macOS, and Linux.
 
+## 🔄 Dual Development Model Support
+
+This tool supports **both traditional member-based and modern file-based development**:
+
+### Member-Based Development
+Traditional IBM i source member development:
+- **RPGLE, SQLRPGLE** - RPG programs
+- **CLLE, CLP** - Control Language programs
+- **SQL** - SQL procedures, functions  
+- **PF, LF** - Physical/Logical files (DDS)
+- **DSPF, PRTF** - Display/Printer files
+- **CMD** - Command definitions
+
+### File-Based Development
+Modern IFS file development:
+- **PHP, Python, Node.js** - Web applications
+- **Shell scripts** - Automation
+- **Configuration files** - JSON, XML, YAML
+- **Web resources** - HTML, CSS, JavaScript
+
+Both models work seamlessly with the same unified tool and share session management, profiles, and Git integration.
+
 **Key Features:**
 - 🔄 **Unified Interface** - Single tool for members, files, and Git
 - 🔐 **Session-Based Auth** - No password re-entry (SSH ControlMaster)
 - 🔑 **Password Caching** - FTP password cached for 4 hours
 - 🎯 **Multi-Profile Support** - Manage multiple IBM i systems
 - 📂 **Library/Srcfile Switching** - Easy context switching between libraries
-- 📦 **Member & File Sync** - RPGLE development and file synchronization
+- 📦 **Member & File Sync** - Member-based (RPGLE, CLLE, SQL, PF, LF, etc.) AND file-based (PHP, Python, Node.js, configs) development
 - 🎨 **Smart File Extensions** - Automatic extension detection (`.rpgle`, `.clle`, `.sql`, etc.)
 - 🔗 **Git Integration** - Version control and GitHub automation
 - 🎮 **Interactive Menu** - User-friendly command-line interface
@@ -264,13 +286,13 @@ ibmi-sync git push
 
 ## Workflows
 
-### RPGLE Development
+### Member-Based Development (RPGLE, CLLE, SQL)
 
 ```bash
 # 1. Start session
 ibmi-sync session start
 
-# 2. Pull program
+# 2. Pull RPGLE program
 ibmi-sync member pull <Member>
 
 # 3. Edit with IDE
@@ -282,6 +304,61 @@ ibmi-sync member compile <Member>
 # 5. When ready, commit
 ibmi-sync git commit "Fixed <Member> calculation bug"
 ibmi-sync git push
+```
+
+**Other member types:**
+```bash
+# CL program
+ibmi-sync session set --srcfile=<CLLESourceFile>
+ibmi-sync member pull <Member>     # Saves as <Member>.clle
+
+# SQL procedure
+ibmi-sync session set --srcfile=<SQLSourceFile>
+ibmi-sync member pull <Member>     # Saves as <Member>.sql
+
+# Physical file (PF)
+ibmi-sync session set --srcfile=<DDSSourceFile>
+ibmi-sync member pull <Member>     # Saves as <Member>.dds
+```
+
+### File-Based Development (PHP, Python, Node.js)
+
+```bash
+# 1. Pull IFS application folder
+ibmi-sync folder pull /home/user/webapp mywebapp
+
+# 2. Edit files locally
+code ~/ibmi-sync-data/production/mywebapp/
+
+# 3. Sync back to IFS
+ibmi-sync folder push mywebapp /home/user/webapp
+
+# 4. Commit to Git
+ibmi-sync git commit "Updated web application"
+ibmi-sync git push
+```
+
+**Example use cases:**
+```bash
+# PHP application
+ibmi-sync folder pull /www/myapp myapp
+# Edit PHP, HTML, CSS files
+ibmi-sync folder push myapp /www/myapp
+
+# Python scripts
+ibmi-sync file pull /home/user/scripts/automation.py
+# Edit Python script
+ibmi-sync file push automation.py /home/user/scripts/
+
+# Node.js application
+ibmi-sync folder pull /home/user/nodeapp nodeapp
+# Edit JavaScript, JSON, package.json
+ibmi-sync folder push nodeapp /home/user/nodeapp
+
+# Configuration files
+ibmi-sync file pull /home/user/config.json
+# Edit config
+ibmi-sync file push config.json /home/user/
 ```
 
 ### IFS File Development
