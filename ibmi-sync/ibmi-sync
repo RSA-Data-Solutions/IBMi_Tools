@@ -146,8 +146,8 @@ EXAMPLES:
   ibmi-sync git commit "Updated files" && ibmi-sync git push
 
 DOCUMENTATION:
-  Full documentation: https://github.com/msasikumar/IBMi_Tools
-  Issues: https://github.com/msasikumar/IBMi_Tools/issues
+  Full documentation: https://github.com/RSA-Data-Solutions/IBMi_Tools
+  Issues: https://github.com/RSA-Data-Solutions/IBMi_Tools/issues
 
 
 EOF

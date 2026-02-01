@@ -774,7 +774,7 @@ The uninstall script will:
 ## Contributing
 
 Found a bug or have a feature request? Please report it at:
-https://github.com/msasikumar/IBMi_Tools/issues
+https://github.com/RSA-Data-Solutions/IBMi_Tools/issues
 
 ## Migration from Old Tools
 
@@ -792,7 +792,7 @@ For issues, questions, or suggestions:
 - **Documentation**: `ibmi-sync help`
 - **Configuration**: `ibmi-sync config edit`
 - **Troubleshooting**: See Troubleshooting section above
-- **GitHub Issues**: https://github.com/msasikumar/IBMi_Tools/issues
+- **GitHub Issues**: https://github.com/RSA-Data-Solutions/IBMi_Tools/issues
 
 ## Version History
 
@@ -830,4 +830,4 @@ or distribution is strictly prohibited. See LICENSE file for complete terms.
 **Happy IBM i Development! 🚀**
 
 For the latest updates and documentation, visit:
-https://github.com/msasikumar/IBMi_Tools
+https://github.com/RSA-Data-Solutions/IBMi_Tools

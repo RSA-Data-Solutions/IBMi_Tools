@@ -154,7 +154,7 @@ Edit `~/sync_files.sh`:
 IBMI_HOST="<pub400.com>"
 IBMI_USER="<UserID>"
 REMOTE_BASE_DIR="/home/${IBMI_USER}"
-GIT_REPO_URL="https://github.com/msasikumar/IBMi_Tools.git"
+GIT_REPO_URL="https://github.com/RSA-Data-Solutions/IBMi_Tools.git"
 ```
 
 ---
@@ -248,7 +248,7 @@ Author: Sasikumar Manickam
 
 ---
 
-**Repository**: https://github.com/msasikumar/IBMi_Tools.git
+**Repository**: https://github.com/RSA-Data-Solutions/IBMi_Tools.git
 **Owner**: RSA Data Solutions Inc.
 **Author**: Sasikumar Manickam
 **Last Updated**: January 2026
