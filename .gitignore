@@ -23,3 +23,12 @@ ibmi-sync/.git/
 # Archives
 *.zip
 *.tar.gz
+
+.env
+.env.local
+.env.*.local
+node_modules/
+dist/
+coverage/
+__pycache__/
+*.pyc
