@@ -1,0 +1,34 @@
+# Fleet manifest (templates/fleet.yml in RSA-Data-Solutions/always-on-engineering-fleet).
+# The issue fleet gives these commands, protected paths and notes to its agents.
+version: 1
+fleet:
+  enabled: true
+  control_repository: RSA-Data-Solutions/always-on-engineering-fleet
+project:
+  name: IBMi_Tools
+  default_branch: main
+  tier: standard
+agents:
+  enabled:
+  - dhira
+  - lynn
+  - sam
+commands:
+  lint: bash -n ibmi-sync/ibmi-sync && bash -n ibmi-sync/install.sh && bash -n ibmi-sync/uninstall.sh && for f in
+    ibmi-sync/lib/*.sh; do bash -n "$f"; done
+paths:
+  protected:
+  - .github/workflows/**
+  - .env
+  - .env.*
+  - secrets/**
+safety:
+  production_requires_human_approval: true
+  allow_autonomous_merge: false
+  max_agent_attempts: 2
+  max_agent_runtime_minutes: 90
+notifications:
+  slack_channel: D0C1MH2E69J
+notes: 'Shell tool (ibmi-sync) with Windows .cmd launchers (isync.cmd, ibmi-sync.cmd). There is no Windows machine
+  or IBM i system available to the agents: Windows-only bugs can be fixed by reading the .cmd code carefully but
+  cannot be run; say so in the summary.'
