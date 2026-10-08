@@ -1,0 +1,10 @@
+# Keep shell scripts LF on every platform. Git for Windows defaults to core.autocrlf=true,
+# which would check them out with CRLF and make bash fail with "$'\r': command not found".
+* text=auto eol=lf
+ibmi-sync/ibmi-sync text eol=lf
+*.sh text eol=lf
+*.yaml text eol=lf
+# Windows batch files need CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.png binary

@@ -2,6 +2,42 @@
 
 All notable changes to IBM i Sync Tool will be documented in this file.
 
+## [1.2.0] - 2026-10-08
+
+### Windows 11 / Azure Virtual Desktop support
+- `.gitattributes` keeps the shell scripts LF on Windows; Git for Windows' default `core.autocrlf=true`
+  checked them out with CRLF, and bash then failed with `$'\r': command not found`.
+- `ibmi-sync.cmd` / `isync.cmd` rewritten. They find Git Bash (Program Files, per-user install, Scoop, or next to
+  `git.exe`; never WSL's `System32\bash.exe`; `IBMI_SYNC_BASH` overrides), pass every argument through, and keep
+  the current directory. Before, `where bash` usually failed, the first argument was dropped, and the launcher
+  changed directory.
+- Installer: detects Git Bash (`uname` reports `MINGW64_NT-…`, which was reported as "unknown"); installs the
+  `.cmd` launchers; adds `~/bin` to the Windows **user** PATH without admin rights (PowerShell, falling back to
+  `reg.exe`, and it never writes a PATH it could not read); creates `~/.bash_profile` for Git Bash.
+- SSH connection sharing (ControlMaster) is configurable (`session.multiplex: auto|yes|no`, `IBMI_SSH_MUX`) and
+  off by default on Windows, where Git Bash only emulates Unix sockets. If a shared connection cannot be opened
+  on any platform (e.g. socket path too long), the session continues without sharing.
+- Folder sync falls back to `tar` over SSH when rsync is missing locally (Git Bash) or on the IBM i; a remote
+  rsync in `/QOpenSys/pkgs/bin` is found even when it is not on PATH.
+- `config.yaml` saved with Windows line endings works; `isync config edit` opens Notepad on Windows.
+
+### Fixed (all platforms)
+- `isync session start` failed on configurations created by `config init` (no `session:` block, so ssh got
+  `-o ConnectTimeout=` with no value). Session settings now have built-in defaults.
+- Placeholder values (`<pub400.com>`, blank) are rejected with a clear message instead of being used as a host.
+- `uninstall.sh` had a syntax error and could not run; it now also removes `isync` and the Windows launchers and
+  cleans the PATH block from every shell file it was written to.
+- `session status` showed live shared connections as "stale" and printed raw color codes.
+- `member create NAME` never auto-detected the source type (TXT was always passed); `.sqlrpgle` / `.sqlrpg`
+  are now recognised.
+- Installer migration from `sync_ibmi.sh` / `sync_files.sh`: writes only into the default profile (the old `sed`
+  also rewrote commented examples), saves `git_repo`, and always backs up the old scripts (condition was inverted).
+- `isync` is a small forwarding script instead of a copy (Git Bash's `ln -s` silently copies).
+- macOS: bash 3.2 compatibility (`${var,,}` in member type detection), no GNU-only `sed -i` / `sed addr,+N`;
+  the PATH line goes to `~/.zshrc` for zsh instead of a `~/.bashrc` zsh never reads.
+- `ibmi-sync` and `uninstall.sh` are executable in git.
+- `file compare` size display used `stat -f`, which prints file-system data on Linux.
+
 ## [1.1.0] - 2026-01-29
 
 ### Added

@@ -169,7 +169,7 @@ get_current_profile() {
     fi
 
     # Extract default profile from YAML
-    local default=$(grep "^default_profile:" "$CONFIG_FILE" | cut -d':' -f2)
+    local default=$(grep "^default_profile:" "$CONFIG_FILE" | cut -d':' -f2 | tr -d '\r')
     
     # Trim whitespace using parameter expansion
     default="${default#"${default%%[![:space:]]*}"}"
@@ -195,8 +195,8 @@ config_list_profiles() {
 
     print_title "Available Profiles:"
 
-    # Parse profiles from YAML
-    awk '/^  [a-zA-Z_]/ && !/^    / {
+    # Parse profiles from YAML (CRs removed first: config.yaml may have Windows line endings)
+    tr -d '\r' < "$CONFIG_FILE" | awk '/^  [a-zA-Z_]/ && !/^    / {
         sub(/^  /, "");
         gsub(/:$/, "");
         profile = $0;
@@ -208,7 +208,7 @@ config_list_profiles() {
                 break;
             }
         }
-    }' "$CONFIG_FILE"
+    }'
 }
 
 # Get profile value by key
@@ -222,6 +222,7 @@ config_get() {
 
     # Use awk to extract value from YAML profile section
     awk -v profile="$profile" -v key="$key" '
+        { sub(/\r$/, "") }   # config.yaml saved with Windows line endings
         /^  '"$profile"':$/ {
             in_profile = 1
             next
@@ -230,7 +231,8 @@ config_get() {
             in_profile = 0
         }
         in_profile && $1 ~ /^'"$key"':$/ {
-            gsub(/.*: /, "");
+            gsub(/\r/, "");
+            sub(/^[^:]*: */, "");
             gsub(/"/, "");
             print
         }
@@ -259,9 +261,14 @@ config_load_profile() {
     export IBMI_GIT_REPO=$(config_get "$profile" "git_repo")
     export IBMI_GIT_BRANCH=$(config_get "$profile" "git_branch")
 
-    # Validate required values
-    assert_not_empty "$IBMI_HOST" "IBMI_HOST"
-    assert_not_empty "$IBMI_USER" "IBMI_USER"
+    # Validate required values: empty, blank or "<placeholder>" means the profile was never filled in
+    local field value
+    for field in host user; do
+        value=$(config_get "$profile" "$field")
+        if [ -z "$(trim "$value")" ] || [[ "$value" == *"<"*">"* ]]; then
+            die "Profile '$profile' has no real $field (found: '${value}'). Set it with: ibmi-sync config edit"
+        fi
+    done
 
     print_debug "Profile loaded: $IBMI_PROFILE on $IBMI_HOST as $IBMI_USER"
 }
@@ -269,8 +276,10 @@ config_load_profile() {
 # Get session configuration
 config_get_session() {
     local key=$1
+    local value
 
-    awk -v key="$key" '
+    value=$(awk -v key="$key" '
+        { sub(/\r$/, "") }   # config.yaml saved with Windows line endings
         /^session:/ {
             in_session = 1
             next
@@ -279,11 +288,25 @@ config_get_session() {
             in_session = 0
         }
         in_session && $1 ~ /^'"$key"':$/ {
-            gsub(/.*: /, "");
+            gsub(/\r/, "");
+            sub(/^[^:]*: */, "");
             gsub(/"/, "");
             print
         }
-    ' "$CONFIG_FILE"
+    ' "$CONFIG_FILE" | head -n 1)
+
+    # Configs created by `config init` have no session: block; ssh rejects empty -o values.
+    if [ -z "$(trim "$value")" ]; then
+        case "$key" in
+            control_persist) value="4h" ;;
+            control_path) value="~/.ibmi/ssh-%r@%h:%p" ;;
+            connect_timeout) value="10" ;;
+            server_alive_interval) value="60" ;;
+            server_alive_count_max) value="3" ;;
+            multiplex) value="auto" ;;
+        esac
+    fi
+    echo "$value"
 }
 
 # ============================================================================
@@ -366,13 +389,18 @@ clear_session() {
 
 # Edit configuration file in default editor
 config_edit() {
-    local editor=${EDITOR:-nano}
-
     if [ ! -f "$CONFIG_FILE" ]; then
         die "Configuration file not found"
     fi
 
-    $editor "$CONFIG_FILE"
+    if [ -z "${EDITOR:-}" ] && is_windows && command_exists notepad; then
+        # Notepad waits until it is closed; it needs a Windows path
+        notepad "$(cygpath -w "$CONFIG_FILE")"
+    else
+        local editor=${EDITOR:-nano}
+        command_exists "${editor%% *}" || editor="vi"
+        $editor "$CONFIG_FILE"
+    fi
     check_status "Failed to edit configuration"
 }
 
@@ -442,6 +470,26 @@ config_edit_profile() {
     config_edit
 }
 
+# Set one value inside a profile (adds the key if it is missing). Portable: no sed -i.
+config_set_value() {
+    local profile=$1
+    local key=$2
+    local value=$3
+    local tmp="$CONFIG_FILE.tmp.$$"
+
+    grep -qF "  $profile:" "$CONFIG_FILE" || die "Profile not found: $profile"
+
+    awk -v p="  $profile:" -v key="$key" -v val="$value" '
+        function emit() { print "    " key ": \"" val "\""; done = 1 }
+        { sub(/\r$/, "") }
+        $0 == p { inp = 1; print; next }
+        inp && ($0 ~ /^  [a-zA-Z_]/ || $0 ~ /^[^ #]/) { if (!done) emit(); inp = 0 }
+        inp && $1 == key ":" { emit(); next }
+        { print }
+        END { if (inp && !done) emit() }
+    ' "$CONFIG_FILE" > "$tmp" && mv "$tmp" "$CONFIG_FILE"
+}
+
 # Delete profile
 config_delete_profile() {
     local profile=$1
@@ -459,9 +507,15 @@ config_delete_profile() {
         return 1
     fi
 
-    # Remove profile section from YAML (escape profile name for sed)
-    local escaped_profile=$(printf '%s\n' "$profile" | sed 's/[[\.*^$/]/\\&/g')
-    sed -i "/^  $escaped_profile:/,/^  [a-zA-Z_]/{ /^  [a-zA-Z_]/!d; }" "$CONFIG_FILE"
+    # Remove profile section from YAML
+    local tmp="$CONFIG_FILE.tmp.$$"
+    awk -v p="  $profile:" '
+        { sub(/\r$/, "") }
+        $0 == p { skip = 1; next }
+        skip && /^  [a-zA-Z_]/ { skip = 0 }
+        skip && /^[^ #]/ { skip = 0 }
+        !skip { print }
+    ' "$CONFIG_FILE" > "$tmp" && mv "$tmp" "$CONFIG_FILE"
 
     print_success "Profile deleted: $profile"
 }

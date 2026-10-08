@@ -74,6 +74,69 @@ EOF
 }
 
 # ============================================================================
+# Connection options
+# ============================================================================
+
+# Whether to share one SSH connection per profile (OpenSSH ControlMaster).
+# session.multiplex (auto|yes|no) or IBMI_SSH_MUX=0/1. "auto" turns it off on Windows:
+# Git Bash's OpenSSH only emulates the Unix sockets ControlMaster needs and it is unreliable
+# there, so each command opens its own connection instead (use an SSH key to avoid prompts).
+ssh_mux_enabled() {
+    local mode="${IBMI_SSH_MUX:-$(config_get_session 'multiplex' 2>/dev/null)}"
+    case "$(to_lower "$mode")" in
+        1|yes|true|on) return 0 ;;
+        0|no|false|off) return 1 ;;
+    esac
+    ! is_windows
+}
+
+# Fill the SSH_OPTS array: timeouts/keep-alives, plus the shared connection when there is one.
+build_ssh_opts() {
+    local socket=${1:-${IBMI_SESSION_SOCKET:-}}
+    SSH_OPTS=(
+        -o "ConnectTimeout=$(config_get_session 'connect_timeout')"
+        -o "ServerAliveInterval=$(config_get_session 'server_alive_interval')"
+        -o "ServerAliveCountMax=$(config_get_session 'server_alive_count_max')"
+    )
+    if [ -n "$socket" ] && ssh_mux_enabled; then
+        SSH_OPTS+=(-o "ControlPath=$socket" -o "ControlMaster=no")
+    fi
+}
+
+# Load or (re)start the session for a profile. Messages go to stderr so that callers can
+# stream data through ssh on stdout.
+session_ensure() {
+    local profile=$1
+
+    # Load profile if not already loaded
+    if [ -z "$IBMI_PROFILE" ] || [ "$IBMI_PROFILE" != "$profile" ]; then
+        config_load_profile "$profile"
+    fi
+
+    {
+        if ! load_session "$profile"; then
+            print_warning "No active session. Starting one..."
+            session_start "$profile" || die "Failed to start session"
+            load_session "$profile"
+        elif ! session_check "$profile" "$IBMI_SESSION_SOCKET"; then
+            print_warning "Session expired. Reconnecting..."
+            session_start "$profile" || die "Failed to reconnect"
+            load_session "$profile"
+        fi
+    } >&2
+}
+
+# Run a remote command with stdin/stdout passed through (for piping data, e.g. tar).
+session_stream() {
+    local profile=$1
+    local cmd=$2
+
+    session_ensure "$profile"
+    build_ssh_opts
+    ssh "${SSH_OPTS[@]}" "${IBMI_SESSION_USER}@${IBMI_SESSION_HOST}" "$cmd"
+}
+
+# ============================================================================
 # Session Management
 # ============================================================================
 
@@ -102,8 +165,12 @@ session_start() {
 
     ensure_dir "$(dirname "$socket_path")"
 
+    if ! ssh_mux_enabled; then
+        socket_path=""
+    fi
+
     # Check if session already exists
-    if session_check "$profile" "$socket_path"; then
+    if [ -n "$socket_path" ] && session_check "$profile" "$socket_path"; then
         print_info "Session already active for profile: $profile"
         save_session "$profile" "$IBMI_HOST" "$IBMI_USER" "$socket_path" "$IBMI_LIBRARY" "$IBMI_SRCFILE"
         return 0
@@ -111,18 +178,37 @@ session_start() {
 
     print_info "Authenticating to $IBMI_HOST as $IBMI_USER..."
 
-    # Start SSH ControlMaster connection
-    # -f: background, -N: no command, -M: master mode
-    ssh \
-        -fN \
-        -M \
-        -S "$socket_path" \
-        -o ConnectTimeout=$connect_timeout \
-        -o ServerAliveInterval=$server_alive_interval \
-        -o ServerAliveCountMax=$server_alive_count_max \
-        "${IBMI_USER}@${IBMI_HOST}" 2>&1
-
-    local status=$?
+    local status
+    if [ -n "$socket_path" ]; then
+        # Start SSH ControlMaster connection
+        # -f: background, -N: no command, -M: master mode
+        ssh \
+            -fN \
+            -M \
+            -S "$socket_path" \
+            -o ConnectTimeout=$connect_timeout \
+            -o ServerAliveInterval=$server_alive_interval \
+            -o ServerAliveCountMax=$server_alive_count_max \
+            "${IBMI_USER}@${IBMI_HOST}" 2>&1
+        status=$?
+        if [ $status -ne 0 ]; then
+            # e.g. "path ... too long for Unix domain socket" or no socket support: work without sharing
+            print_warning "Could not open a shared SSH connection; continuing without connection sharing"
+            socket_path=""
+            build_ssh_opts ""
+            ssh "${SSH_OPTS[@]}" "${IBMI_USER}@${IBMI_HOST}" true 2>&1
+            status=$?
+        fi
+    else
+        # No shared connection (Windows default): just prove that we can log in.
+        build_ssh_opts ""
+        ssh "${SSH_OPTS[@]}" "${IBMI_USER}@${IBMI_HOST}" true 2>&1
+        status=$?
+        if [ $status -eq 0 ] && [ ! -f "$HOME/.ssh/id_ed25519" ] && [ ! -f "$HOME/.ssh/id_rsa" ] && [ ! -f "$HOME/.ssh/id_ecdsa" ]; then
+            print_warning "Connection sharing is off on this platform, so every command logs in again."
+            print_warning "Set up an SSH key to avoid a password prompt each time (see README: SSH key)."
+        fi
+    fi
 
     if [ $status -eq 0 ]; then
         print_success "Session started successfully"
@@ -131,15 +217,15 @@ session_start() {
         # Display profile configuration
         echo ""
         print_title "Profile Configuration: $profile"
-        echo "  ${CYAN}Connection:${NC}"
+        echo -e "  ${CYAN}Connection:${NC}"
         echo "    Host:        $IBMI_HOST"
         echo "    User:        $IBMI_USER"
         echo ""
-        echo "  ${CYAN}IBM i Settings:${NC}"
+        echo -e "  ${CYAN}IBM i Settings:${NC}"
         echo "    Library:     $IBMI_LIBRARY"
         echo "    Source File: $IBMI_SRCFILE"
         echo ""
-        echo "  ${CYAN}Local Settings:${NC}"
+        echo -e "  ${CYAN}Local Settings:${NC}"
         echo "    Local Dir:   $IBMI_LOCAL_DIR"
         if [ -n "$IBMI_GIT_REPO" ]; then
             echo "    Git Repo:    $IBMI_GIT_REPO"
@@ -169,14 +255,17 @@ session_check() {
 
         load_session "$profile"
         socket_path="$IBMI_SESSION_SOCKET"
+    fi
 
-        if [ -z "$socket_path" ]; then
-            return 1
-        fi
+    # No shared connection (multiplexing off): a saved session is all there is to check
+    if [ -z "$socket_path" ] || ! ssh_mux_enabled; then
+        [ -f "$(get_session_file "$profile")" ]
+        return $?
     fi
 
     # Try to check connection
-    ssh -S "$socket_path" -O check "${IBMI_USER}@${IBMI_HOST}" >/dev/null 2>&1
+    # (the all-sessions view has no profile loaded, so fall back to the saved session's user/host)
+    ssh -S "$socket_path" -O check "${IBMI_USER:-$IBMI_SESSION_USER}@${IBMI_HOST:-$IBMI_SESSION_HOST}" >/dev/null 2>&1
     return $?
 }
 
@@ -192,8 +281,10 @@ session_stop() {
         return 0
     fi
 
-    # Close ControlMaster connection
-    ssh -S "$IBMI_SESSION_SOCKET" -O exit "${IBMI_SESSION_USER}@${IBMI_SESSION_HOST}" 2>/dev/null
+    # Close ControlMaster connection (none when multiplexing is off)
+    if [ -n "$IBMI_SESSION_SOCKET" ]; then
+        ssh -S "$IBMI_SESSION_SOCKET" -O exit "${IBMI_SESSION_USER}@${IBMI_SESSION_HOST}" 2>/dev/null
+    fi
 
     # Clear session data
     clear_session "$profile"
@@ -249,10 +340,10 @@ session_status() {
                         age_str="$((age / 3600))h"
                     fi
 
-                    echo "  ${GREEN}✓${NC} $p ($user@$host, age: $age_str)"
+                    echo -e "  ${GREEN}✓${NC} $p ($user@$host, age: $age_str)"
                     ((count++))
                 else
-                    echo "  ${RED}✗${NC} $p (stale)"
+                    echo -e "  ${RED}✗${NC} $p (stale)"
                 fi
             fi
         done 2>/dev/null
@@ -292,30 +383,11 @@ session_exec() {
         die "Command required"
     fi
 
-    # Load profile if not already loaded
-    if [ -z "$IBMI_PROFILE" ] || [ "$IBMI_PROFILE" != "$profile" ]; then
-        config_load_profile "$profile"
-    fi
+    session_ensure "$profile"
+    build_ssh_opts
 
-    # Load session
-    if ! load_session "$profile"; then
-        print_warning "No active session. Starting one..."
-        session_start "$profile" || die "Failed to start session"
-        load_session "$profile"
-    fi
-
-    # Check if session is still active
-    if ! session_check "$profile" "$IBMI_SESSION_SOCKET"; then
-        print_warning "Session expired. Reconnecting..."
-        session_start "$profile" || die "Failed to reconnect"
-        load_session "$profile"
-    fi
-
-    # Execute command via ControlMaster
-    ssh \
-        -S "$IBMI_SESSION_SOCKET" \
-        "${IBMI_SESSION_USER}@${IBMI_SESSION_HOST}" \
-        "$cmd"
+    # Execute command (through the shared connection when there is one)
+    ssh "${SSH_OPTS[@]}" "${IBMI_SESSION_USER}@${IBMI_SESSION_HOST}" "$cmd"
 
     return $?
 }
@@ -330,30 +402,11 @@ session_scp() {
         die "Usage: session_scp <profile> <source> <destination>"
     fi
 
-    # Load profile if not already loaded
-    if [ -z "$IBMI_PROFILE" ] || [ "$IBMI_PROFILE" != "$profile" ]; then
-        config_load_profile "$profile"
-    fi
+    session_ensure "$profile"
+    build_ssh_opts
 
-    # Load session
-    if ! load_session "$profile"; then
-        print_warning "No active session. Starting one..."
-        session_start "$profile" || die "Failed to start session"
-        load_session "$profile"
-    fi
-
-    # Check if session is still active
-    if ! session_check "$profile" "$IBMI_SESSION_SOCKET"; then
-        print_warning "Session expired. Reconnecting..."
-        session_start "$profile" || die "Failed to reconnect"
-        load_session "$profile"
-    fi
-
-    # Transfer file via ControlMaster
-    scp \
-        -o ControlPath="$IBMI_SESSION_SOCKET" \
-        -o ControlMaster=no \
-        "$source" "$destination"
+    # Transfer file (through the shared connection when there is one)
+    scp "${SSH_OPTS[@]}" "$source" "$destination"
 
     return $?
 }
@@ -370,30 +423,16 @@ session_rsync() {
         die "Usage: session_rsync <profile> <source> <destination> [rsync args]"
     fi
 
-    # Load profile if not already loaded
-    if [ -z "$IBMI_PROFILE" ] || [ "$IBMI_PROFILE" != "$profile" ]; then
-        config_load_profile "$profile"
-    fi
+    session_ensure "$profile"
+    build_ssh_opts
 
-    # Load session
-    if ! load_session "$profile"; then
-        print_warning "No active session. Starting one..."
-        session_start "$profile" || die "Failed to start session"
-        load_session "$profile"
-    fi
+    # rsync takes the ssh command as one string; double-quote each option (paths may contain spaces)
+    local ssh_cmd="ssh" opt
+    for opt in "${SSH_OPTS[@]}"; do
+        ssh_cmd+=" \"$opt\""
+    done
 
-    # Check if session is still active
-    if ! session_check "$profile" "$IBMI_SESSION_SOCKET"; then
-        print_warning "Session expired. Reconnecting..."
-        session_start "$profile" || die "Failed to reconnect"
-        load_session "$profile"
-    fi
-
-    # Sync via rsync with ControlMaster
-    rsync \
-        -e "ssh -S $IBMI_SESSION_SOCKET -o ControlMaster=no" \
-        "${extra_args[@]}" \
-        "$source" "$destination"
+    rsync -e "$ssh_cmd" "${extra_args[@]}" "$source" "$destination"
 
     return $?
 }
@@ -422,3 +461,7 @@ export -f session_exec
 export -f session_scp
 export -f session_rsync
 export -f session_init
+export -f session_ensure
+export -f session_stream
+export -f ssh_mux_enabled
+export -f build_ssh_opts

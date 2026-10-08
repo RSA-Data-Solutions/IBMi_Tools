@@ -53,34 +53,93 @@ command_exists() {
 
 # Detect platform
 detect_platform() {
-    if grep -qi microsoft /proc/version 2>/dev/null; then
-        echo "wsl"
-    elif [ "$(uname)" = "Darwin" ]; then
-        echo "macos"
-    elif [ "$(uname)" = "Linux" ]; then
-        # Check for MSYS/MinGW (Windows Git Bash)
-        if [[ "$(uname -o 2>/dev/null)" == *"MSYS"* ]] || [[ "$(uname -o 2>/dev/null)" == *"MinGW"* ]]; then
-            echo "windows"
-        else
-            echo "linux"
-        fi
-    else
-        echo "unknown"
+    if [ -n "${IBMI_PLATFORM:-}" ]; then
+        echo "$IBMI_PLATFORM"
+        return 0
     fi
+    case "$(uname -s 2>/dev/null)" in
+        MINGW*|MSYS*|CYGWIN*) echo "windows" ;;   # Git Bash (Git for Windows), MSYS2, Cygwin
+        Darwin) echo "macos" ;;
+        Linux)
+            if grep -qi microsoft /proc/version 2>/dev/null; then
+                echo "wsl"
+            else
+                echo "linux"
+            fi
+            ;;
+        *) echo "unknown" ;;
+    esac
 }
 
-# Get shell config file
+PLATFORM="$(detect_platform)"
+
+# Shell startup file for the user's login shell
 get_shell_config() {
-    if [ -f "$HOME/.zshrc" ]; then
-        echo "$HOME/.zshrc"
-    elif [ -f "$HOME/.bash_profile" ]; then
-        echo "$HOME/.bash_profile"
-    elif [ -f "$HOME/.bashrc" ]; then
-        echo "$HOME/.bashrc"
+    case "$(basename "${SHELL:-bash}")" in
+        zsh) echo "$HOME/.zshrc" ;;
+        bash)
+            if [ "$PLATFORM" = "macos" ]; then
+                # Terminal.app starts login shells, which read ~/.bash_profile
+                echo "$HOME/.bash_profile"
+            else
+                echo "$HOME/.bashrc"
+            fi
+            ;;
+        *) echo "$HOME/.profile" ;;
+    esac
+}
+
+# Add a folder to the Windows *user* PATH (no administrator rights needed) so that
+# ibmi-sync.cmd / isync.cmd work from PowerShell and cmd.exe.
+add_windows_user_path() {
+    local dir=$1
+    local windir
+    windir=$(cygpath -w "$dir")
+    # print_* use "echo -e": double the backslashes so C:\Users\...\bin is not read as escapes (\b, \n)
+    local shown=${windir//\\/\\\\}
+
+    # 1. PowerShell (also notifies running programs of the change)
+    local ps_dir=${windir//\'/\'\'}
+    local result
+    result=$(powershell.exe -NoProfile -NonInteractive -Command "
+        \$d = '$ps_dir'
+        \$p = [Environment]::GetEnvironmentVariable('Path', 'User')
+        if (-not \$p) { \$p = '' }
+        if ((\$p -split ';') -contains \$d) { 'present' } else {
+            [Environment]::SetEnvironmentVariable('Path', ((\$p.TrimEnd(';') + ';' + \$d).TrimStart(';')), 'User')
+            'added'
+        }" 2>/dev/null | tr -d '\r')
+    case "$result" in
+        *present*) print_success "$shown is already on your Windows PATH"; return 0 ;;
+        *added*) print_success "Added $shown to your Windows user PATH (open a new terminal to use it)"; return 0 ;;
+    esac
+
+    # 2. reg.exe (PowerShell may run in Constrained Language Mode on locked-down desktops)
+    local query current
+    if query=$(MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' reg.exe query 'HKCU\Environment' /v Path 2>&1); then
+        current=$(printf '%s\n' "$query" | tr -d '\r' | sed -n 's/^ *Path *REG_[A-Z_]* *//p')
+    elif printf '%s' "$query" | grep -qi 'unable to find'; then
+        current=""   # no user PATH yet
     else
-        # If no shell config file exists, create .bashrc
-        echo "$HOME/.bashrc"
+        query=""     # reg.exe blocked: never write a PATH we could not read (it would replace the user's)
     fi
+    if [ -n "$query" ]; then
+        if printf '%s' ";$current;" | grep -qiF ";$windir;"; then
+            print_success "$shown is already on your Windows PATH"
+            return 0
+        fi
+        local newpath="${current:+${current%;};}$windir"
+        if MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' reg.exe add 'HKCU\Environment' /v Path /t REG_EXPAND_SZ \
+            /d "$newpath" /f >/dev/null 2>&1; then
+            print_success "Added $shown to your Windows user PATH (sign out and in, or open a new terminal)"
+            return 0
+        fi
+    fi
+
+    # 3. Manual
+    print_warning "Could not change your Windows PATH automatically (blocked by policy?)."
+    echo "  Add this folder to your user PATH: Start > 'Edit environment variables for your account' > Path > New:"
+    echo "    $windir"
 }
 
 # ============================================================================
@@ -93,7 +152,7 @@ check_prerequisites() {
     local missing=()
 
     # Check required commands
-    for cmd in bash ssh scp git; do
+    for cmd in bash ssh scp git curl tar; do
         if ! command_exists "$cmd"; then
             missing+=("$cmd")
         fi
@@ -101,7 +160,7 @@ check_prerequisites() {
 
     # Check for rsync (optional but recommended)
     if ! command_exists rsync; then
-        print_warning "rsync not found (optional, used for folder sync)"
+        print_success "rsync not found: folder sync will use tar over ssh instead (fine)"
     fi
 
     if [ ${#missing[@]} -gt 0 ]; then
@@ -168,13 +227,25 @@ install_files() {
         rm -f "$BIN_DIR/isync"
     fi
     
-    # Try to create a proper symlink, but fall back to copy on Windows (Git Bash)
-    if ! ln -s "$BIN_DIR/ibmi-sync" "$BIN_DIR/isync" 2>/dev/null; then
-        # If symlink fails, create a copy as fallback (common on Windows Git Bash)
-        cp "$BIN_DIR/ibmi-sync" "$BIN_DIR/isync"
-        print_warning "Created copy instead of symlink (common on Windows Git Bash)"
-    fi
+    # A tiny forwarding script instead of a symlink: Git Bash's "ln -s" silently makes a
+    # copy that would go stale on the next upgrade.
+    cat > "$BIN_DIR/isync" << 'ISYNC'
+#!/bin/bash
+# IBM i Sync Tool - "isync" shorthand for ibmi-sync
+exec "$(dirname "${BASH_SOURCE[0]}")/ibmi-sync" "$@"
+ISYNC
     chmod +x "$BIN_DIR/isync" 2>/dev/null || true
+
+    # Windows: launchers so that ibmi-sync / isync also work from PowerShell and cmd.exe
+    if [ "$PLATFORM" = "windows" ]; then
+        local launcher
+        for launcher in ibmi-sync.cmd isync.cmd; do
+            if [ -f "$SCRIPT_DIR/$launcher" ]; then
+                cp "$SCRIPT_DIR/$launcher" "$BIN_DIR/$launcher"
+            fi
+        done
+        print_success "Windows launchers installed: $BIN_DIR/ibmi-sync.cmd, isync.cmd"
+    fi
 
     print_success "Files installed to: $INSTALL_PREFIX"
     print_success "Executable installed to: $BIN_DIR/ibmi-sync"
@@ -211,6 +282,19 @@ EOF
     echo "  Run: source $shell_config (or restart your terminal)"
 }
 
+update_windows_path() {
+    [ "$PLATFORM" = "windows" ] || return 0
+    print_step "Updating Windows PATH (for PowerShell and cmd.exe)..."
+
+    # Git Bash runs ~/.bash_profile, not ~/.bashrc; without one it prints a warning and makes one.
+    if [ ! -f "$HOME/.bash_profile" ] && [ "$(get_shell_config)" = "$HOME/.bashrc" ]; then
+        printf '%s\n' '# Created by the IBM i Sync Tool installer' 'test -f ~/.bashrc && . ~/.bashrc' > "$HOME/.bash_profile"
+        print_success "Created ~/.bash_profile (loads ~/.bashrc)"
+    fi
+
+    add_windows_user_path "$BIN_DIR"
+}
+
 create_directories() {
     print_step "Creating directories..."
 
@@ -226,8 +310,11 @@ initialize_config() {
 
     # Run the tool to create default config
     if [ ! -f "$HOME/.ibmi/config.yaml" ]; then
-        "$BIN_DIR/ibmi-sync" config init >/dev/null 2>&1 || true
-        print_success "Configuration initialized"
+        if "$BIN_DIR/ibmi-sync" config init >/dev/null 2>&1; then
+            print_success "Configuration initialized (edit it with: ibmi-sync config edit)"
+        else
+            print_warning "Could not create ~/.ibmi/config.yaml; run 'ibmi-sync config init' to see why"
+        fi
     else
         print_success "Configuration already exists"
     fi
@@ -246,7 +333,7 @@ first_time_setup() {
     echo ""
 
     local proceed
-    read -p "Create a profile now? (y/n) " -n 1 -r proceed
+    read -p "Create a profile now? (y/n) " -n 1 -r proceed || proceed=n
     echo ""
 
     if [[ ! $proceed =~ ^[Yy]$ ]]; then
@@ -262,6 +349,28 @@ first_time_setup() {
 # Migration from Old Tools
 # ============================================================================
 
+# Default profile name from ~/.ibmi/config.yaml
+default_profile_name() {
+    grep '^default_profile:' "$HOME/.ibmi/config.yaml" 2>/dev/null | cut -d':' -f2 | tr -d ' "\r'
+}
+
+# set_profile_values key value [key value ...] - writes into the default profile using the
+# tool's own config library (only the profile's lines change; comments are left alone)
+set_profile_values() {
+    local profile
+    profile=$(default_profile_name)
+    [ -n "$profile" ] || { print_warning "No default profile in ~/.ibmi/config.yaml; not migrated"; return 0; }
+    cp "$HOME/.ibmi/config.yaml" "$HOME/.ibmi/config.yaml.bak"
+    (
+        source "$INSTALL_PREFIX/lib/common.sh"
+        source "$INSTALL_PREFIX/lib/config.sh"
+        while [ $# -ge 2 ]; do
+            [ -n "$2" ] && config_set_value "$profile" "$1" "$2"
+            shift 2
+        done
+    )
+}
+
 migrate_old_tools() {
     print_step "Checking for old tool installations..."
 
@@ -272,7 +381,7 @@ migrate_old_tools() {
         print_warning "Found old member sync tool: ~/sync_ibmi.sh"
 
         local migrate
-        read -p "Migrate configuration from old tool? (y/n) " -n 1 -r migrate
+        read -p "Migrate configuration from old tool? (y/n) " -n 1 -r migrate || migrate=n
         echo ""
 
         if [[ $migrate =~ ^[Yy]$ ]]; then
@@ -283,23 +392,14 @@ migrate_old_tools() {
             local srcfile=$(grep "^SRCFILE=" "$HOME/sync_ibmi.sh" | cut -d'"' -f2)
 
             if [ -n "$host" ] && [ -n "$user" ]; then
-                # Update config
-                sed -i.bak "
-                  s|host: .*|host: \"$host\"|;
-                  s|user: .*|user: \"$user\"|;
-                  s|library: .*|library: \"$library\"|;
-                  s|srcfile: .*|srcfile: \"$srcfile\"|;
-                " "$HOME/.ibmi/config.yaml"
+                mkdir -p "$HOME/ibmi-sync-backup"
+                cp "$HOME/sync_ibmi.sh" "$HOME/ibmi-sync-backup/sync_ibmi.sh.bak"
+                print_success "Old tool backed up to ~/ibmi-sync-backup/"
 
-                print_success "Configuration migrated"
+                set_profile_values host "$host" user "$user" library "$library" srcfile "$srcfile" \
+                    remote_base "/home/$user"
+                print_success "Configuration migrated into profile '$(default_profile_name)'"
                 migrated=true
-
-                # Optionally backup old tool
-                if [ -d "$HOME/ibmi-sync-backup" ]; then
-                    mkdir -p "$HOME/ibmi-sync-backup"
-                    cp "$HOME/sync_ibmi.sh" "$HOME/ibmi-sync-backup/sync_ibmi.sh.bak"
-                    print_success "Old tool backed up to ~/ibmi-sync-backup/"
-                fi
             fi
         fi
     fi
@@ -309,7 +409,7 @@ migrate_old_tools() {
         print_warning "Found old file sync tool: ~/sync_files.sh"
 
         local migrate
-        read -p "Migrate configuration from old tool? (y/n) " -n 1 -r migrate
+        read -p "Migrate configuration from old tool? (y/n) " -n 1 -r migrate || migrate=n
         echo ""
 
         if [[ $migrate =~ ^[Yy]$ ]]; then
@@ -319,8 +419,10 @@ migrate_old_tools() {
             local git_repo=$(grep "^GIT_REPO_URL=" "$HOME/sync_files.sh" | cut -d'"' -f2)
 
             if [ -n "$host" ] && [ -n "$user" ]; then
-                # These would already be set from sync_ibmi.sh if both exist
-                print_success "File sync configuration noted"
+                mkdir -p "$HOME/ibmi-sync-backup"
+                cp "$HOME/sync_files.sh" "$HOME/ibmi-sync-backup/sync_files.sh.bak"
+                set_profile_values host "$host" user "$user" git_repo "$git_repo"
+                print_success "File sync configuration migrated into profile '$(default_profile_name)'"
                 migrated=true
             fi
         fi
@@ -378,6 +480,9 @@ show_post_install_info() {
     echo ""
     echo "1. Update your shell configuration:"
     echo "   source $(get_shell_config)"
+    if [ "$PLATFORM" = "windows" ]; then
+        echo "   PowerShell / cmd.exe: open a NEW window, then 'isync help' works there too"
+    fi
     echo ""
     echo "2. Start SSH session:"
     echo "   isync session start"
@@ -408,8 +513,8 @@ main() {
     print_header
 
     print_step "IBM i Unified Sync Tool Installer"
-    echo "Version: 1.0.0"
-    echo "Platform: $(detect_platform)"
+    echo "Version: 1.2.0"
+    echo "Platform: $PLATFORM"
     echo ""
 
     # Run all installation steps
@@ -418,6 +523,7 @@ main() {
     create_directories
     install_files
     update_path
+    update_windows_path
     initialize_config
     migrate_old_tools
     verify_installation

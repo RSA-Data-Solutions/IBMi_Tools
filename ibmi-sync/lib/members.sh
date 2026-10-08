@@ -69,7 +69,9 @@ detect_source_type() {
     local filename=$1
     local extension="${filename##*.}"
 
-    case "${extension,,}" in
+    case "$(to_lower "$extension")" in
+        sqlrpgle) echo "SQLRPGLE" ;;
+        sqlrpg) echo "SQLRPG" ;;
         rpgle) echo "RPGLE" ;;
         rpg) echo "RPG" ;;
         clle|cle) echo "CLLE" ;;

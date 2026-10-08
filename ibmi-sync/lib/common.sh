@@ -300,15 +300,28 @@ ensure_dir() {
 
 # Detect platform
 detect_platform() {
-    if grep -qi microsoft /proc/version 2>/dev/null; then
-        echo "wsl"
-    elif [ "$(uname)" = "Darwin" ]; then
-        echo "macos"
-    elif [ "$(uname)" = "Linux" ]; then
-        echo "linux"
-    else
-        echo "unknown"
+    # IBMI_PLATFORM overrides detection (used by tests).
+    if [ -n "${IBMI_PLATFORM:-}" ]; then
+        echo "$IBMI_PLATFORM"
+        return 0
     fi
+    case "$(uname -s 2>/dev/null)" in
+        MINGW*|MSYS*|CYGWIN*) echo "windows" ;;   # Git Bash (Git for Windows), MSYS2, Cygwin
+        Darwin) echo "macos" ;;
+        Linux)
+            if grep -qi microsoft /proc/version 2>/dev/null; then
+                echo "wsl"
+            else
+                echo "linux"
+            fi
+            ;;
+        *) echo "unknown" ;;
+    esac
+}
+
+# Check if running on Windows (Git Bash / MSYS2 / Cygwin)
+is_windows() {
+    [ "$(detect_platform)" = "windows" ]
 }
 
 # Check if running on WSL
