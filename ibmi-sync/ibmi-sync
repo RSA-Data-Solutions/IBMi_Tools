@@ -23,7 +23,7 @@ fi
 if [ ! -d "$LIB_DIR" ]; then
     LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
 fi
-VERSION="1.0.0"
+VERSION="1.2.0"
 
 # Source all libraries
 source "$LIB_DIR/common.sh"
@@ -231,7 +231,7 @@ cmd_member() {
             ;;
         create)
             [ $# -lt 1 ] && die "Member name required"
-            member_create "${IBMI_PROFILE:-$(get_current_profile)}" "$1" "${2:-TXT}"
+            member_create "${IBMI_PROFILE:-$(get_current_profile)}" "$1" "${2:-}"  # empty: detect from the local file
             ;;
         list)
             member_list "${IBMI_PROFILE:-$(get_current_profile)}"

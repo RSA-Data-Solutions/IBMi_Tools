@@ -112,7 +112,48 @@ file_list() {
 # Folder Operations
 # ============================================================================
 
-# Download folder from IBM i
+# Folder transfers use rsync when both ends have it, otherwise a tar stream over ssh.
+# Git Bash on Windows has no rsync, and many IBM i systems only have it under /QOpenSys/pkgs/bin
+# (not on an ssh session's PATH) or not at all. IBMI_FOLDER_TRANSFER=tar forces the tar path.
+# Sets FOLDER_RSYNC_PATH to the remote rsync binary when rsync is usable.
+folder_use_rsync() {
+    local profile=$1
+    FOLDER_RSYNC_PATH=""
+    [ "${IBMI_FOLDER_TRANSFER:-auto}" = "tar" ] && return 1
+    command_exists rsync || return 1
+    FOLDER_RSYNC_PATH=$(session_stream "$profile" \
+        'command -v rsync 2>/dev/null || { [ -x /QOpenSys/pkgs/bin/rsync ] && echo /QOpenSys/pkgs/bin/rsync; }' \
+        2>/dev/null | tail -n 1)
+    [ -n "$FOLDER_RSYNC_PATH" ]
+}
+
+# Copy the contents of a remote folder into a local folder.
+folder_copy_down() {
+    local profile=$1 remote_path=$2 local_path=$3
+    if folder_use_rsync "$profile"; then
+        session_rsync "$profile" "${IBMI_USER}@${IBMI_HOST}:${remote_path}/" "$local_path/" \
+            -avz --rsync-path="$FOLDER_RSYNC_PATH" 2>&1 | tail -n 5
+    else
+        print_debug "Folder transfer via tar over ssh"
+        session_stream "$profile" "cd \"$remote_path\" && tar -cf - ." | tar -xf - -C "$local_path"
+    fi
+}
+
+# Copy the contents of a local folder into a remote folder (created if needed).
+folder_copy_up() {
+    local profile=$1 local_path=$2 remote_path=$3
+    if folder_use_rsync "$profile"; then
+        session_rsync "$profile" "$local_path/" "${IBMI_USER}@${IBMI_HOST}:${remote_path}/" \
+            -avz --rsync-path="$FOLDER_RSYNC_PATH" 2>&1 | tail -n 5
+    else
+        print_debug "Folder transfer via tar over ssh"
+        # ustar: readable by the AIX tar in IBM i PASE (GNU tar's default long-name format is not)
+        tar --format ustar -cf - -C "$local_path" . |
+            session_stream "$profile" "mkdir -p \"$remote_path\" && cd \"$remote_path\" && tar -xf -"
+    fi
+}
+
+# Pull folder from IBM i
 folder_pull() {
     local profile=$1
     local remote_path=$2
@@ -136,12 +177,9 @@ folder_pull() {
     # Create directory
     ensure_dir "$full_local_path"
 
-    # Download folder using rsync
+    # Download folder (rsync or tar over ssh)
     start_spinner "Downloading..."
-    session_rsync "$profile" \
-        "${IBMI_USER}@${IBMI_HOST}:${remote_path}/" \
-        "$full_local_path/" \
-        -avz --progress 2>&1 | tail -n 5
+    folder_copy_down "$profile" "$remote_path" "$full_local_path"
 
     if [ $? -eq 0 ]; then
         stop_spinner
@@ -177,12 +215,9 @@ folder_push() {
     # Create remote directory first
     session_exec "$profile" "mkdir -p \"$remote_path\"" >/dev/null 2>&1
 
-    # Upload folder using rsync
+    # Upload folder (rsync or tar over ssh)
     start_spinner "Uploading..."
-    session_rsync "$profile" \
-        "$full_local_path/" \
-        "${IBMI_USER}@${IBMI_HOST}:${remote_path}/" \
-        -avz --progress 2>&1 | tail -n 5
+    folder_copy_up "$profile" "$full_local_path" "$remote_path"
 
     if [ $? -eq 0 ]; then
         stop_spinner
@@ -296,8 +331,8 @@ file_compare() {
         diff -u "$full_local_path" "$temp_remote" || true
     else
         print_info "Diff not available, showing file sizes:"
-        print_info "Local: $(stat -f%z "$full_local_path" 2>/dev/null || stat -c%s "$full_local_path") bytes"
-        print_info "Remote: $(stat -f%z "$temp_remote" 2>/dev/null || stat -c%s "$temp_remote") bytes"
+        print_info "Local: $(wc -c < "$full_local_path" | tr -d ' ') bytes"
+        print_info "Remote: $(wc -c < "$temp_remote" | tr -d ' ') bytes"
     fi
 
     # Cleanup

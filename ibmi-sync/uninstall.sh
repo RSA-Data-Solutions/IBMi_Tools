@@ -74,7 +74,7 @@ stop_sessions() {
     print_step "Stopping active sessions..."
 
     if [ -d "$HOME/.ibmi/sessions" ]; then
-        for session_file in "$HOME/.ibmi/sessions"/*.session 2>/dev/null; do
+        for session_file in "$HOME/.ibmi/sessions"/*.session; do
             if [ -f "$session_file" ]; then
                 # Extract socket path and close connection
                 local socket=$(grep '"socket"' "$session_file" | cut -d'"' -f4)
@@ -114,6 +114,15 @@ remove_installation() {
         print_success "Removed: $BIN_DIR/ibmi-sync"
     fi
 
+    # Shorthand and Windows launchers
+    local f
+    for f in isync ibmi-sync.cmd isync.cmd; do
+        if [ -e "$BIN_DIR/$f" ] || [ -L "$BIN_DIR/$f" ]; then
+            rm -f "$BIN_DIR/$f"
+            print_success "Removed: $BIN_DIR/$f"
+        fi
+    done
+
     # Remove installation directory
     if [ -d "$INSTALL_PREFIX" ]; then
         rm -rf "$INSTALL_PREFIX"
@@ -124,24 +133,29 @@ remove_installation() {
 update_shell_config() {
     print_step "Updating shell configuration..."
 
-    local shell_config=$(get_shell_config)
+    # The installer writes a 4-line block starting with this marker into one of these files
+    local marker="# IBM i Sync Tool - Added by installer"
+    local shell_config
+    for shell_config in "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.profile"; do
+        [ -f "$shell_config" ] && grep -qF "$marker" "$shell_config" || continue
 
-    if [ -z "$shell_config" ]; then
-        print_warning "Could not find shell config file"
-        return 0
-    fi
-
-    # Remove IBM i Sync Tool PATH entries
-    if grep -q "IBM i Sync Tool" "$shell_config"; then
-        # Create backup
         cp "$shell_config" "$shell_config.backup-ibmi"
-
-        # Remove our entries (this is a simple approach)
-        sed -i.bak '/IBM i Sync Tool/,+3d' "$shell_config"
+        # Portable (BSD sed on macOS has no "addr,+N"): drop the marker and the 3 lines after it
+        awk -v m="$marker" '$0 == m { skip = 4 } skip > 0 { skip--; next } { print }' \
+            "$shell_config.backup-ibmi" > "$shell_config"
 
         print_success "Updated $shell_config"
         print_warning "Backup saved as: ${shell_config}.backup-ibmi"
-    fi
+    done
+
+    case "$(uname -s 2>/dev/null)" in
+        MINGW*|MSYS*|CYGWIN*)
+            local windir
+            windir=$(cygpath -w "$BIN_DIR")
+            print_warning "Windows: ${windir//\\/\\\\} is still on your user PATH (other tools may use it)."
+            echo "  Remove it under Start > 'Edit environment variables for your account' if you no longer need it."
+            ;;
+    esac
 }
 
 remove_config() {
