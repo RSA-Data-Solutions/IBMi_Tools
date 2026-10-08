@@ -12,65 +12,12 @@ This repository contains two comprehensive toolsets for IBM i development:
 
 ## 📦 Package 1: IBM i Member Sync (Member & File Development)
 
-**Location**: `ibm-i-sync-git-repo/`
+**Location**: `ibmi-sync/`
 
-Syncs IBM i members (library/source file/member) with local filesystem for member-based and file-based development. Supports RPGLE, CLLE, SQL, PF, LF, and other traditional IBM i source types.
+Syncs IBM i members (library/source file/member) with local filesystem for member-based and file-based development.
 
 ### Features
 
-- Pull/push members (RPGLE, CLLE, SQL, PF, LF, and more)
-- Compile members on IBM i
-- Support for all IBM i source types
-- VS Code integration
-- Local development with AI tools
-- Dual development model support
-
-### Quick Start
-
-```bash
-cd ibm-i-sync-git-repo
-./install.sh
-~/sync_ibmi.sh pull <SourceFile>
-```
-
-### Use Cases
-
-- Member-based development (RPGLE, CLLE, SQL, etc.)
-- File-based development (PHP, Python, Node.js, configs)
-- Working with IBM i source members (PF, LF, display files)
-- Compiling programs on IBM i
-- AI-assisted coding with modern editors
-- Mixed development workflows
-
----
-
-## 🔄 Dual Development Model
-
-IBM i development supports **two complementary paradigms**:
-
-### Member-Based Development (Traditional)
-Working with IBM i source members through library/source file/member structure:
-- **RPGLE, SQLRPGLE** - RPG programs
-- **CLLE, CLP** - Control Language programs  
-- **SQL** - SQL procedures and functions
-- **PF, LF** - Physical and Logical files (DDS)
-- **DSPF, PRTF** - Display and Printer files
-- **CMD** - Command definitions
-
-**Use the Member Sync tool** for this traditional IBM i development model.
-
-### File-Based Development (Modern)
-Working with IFS files using standard file systems:
-- **PHP, Python, Node.js** - Modern web applications
-- **Shell scripts** - Automation and utilities
-- **Configuration files** - JSON, XML, YAML, properties
-- **HTML, CSS, JavaScript** - Web resources
-- **Markdown, text files** - Documentation
-
-**Use the File/Folder Sync tool** for this modern development model.
-
-### Hybrid Workflows
-Many teams use **both models simultaneously**:
 - Member-based for core business logic (RPGLE programs)
 - File-based for web interfaces (PHP/Node.js apps)
 - File-based for configuration and automation scripts
@@ -80,8 +27,7 @@ Many teams use **both models simultaneously**:
 
 ## 📦 Package 2: IBM i File/Folder Sync with Git Integration
 
-**Location**: `ibm-i-file-sync/`
-
+**Location**: `ibmi-sync/`
 Syncs files and folders between IBM i IFS and desktop with Git/GitHub integration.
 
 ### Features
@@ -95,10 +41,10 @@ Syncs files and folders between IBM i IFS and desktop with Git/GitHub integratio
 ### Quick Start
 
 ```bash
-cd ibm-i-file-sync
+cd ibmi-sync
 ./install.sh
-~/sync_files.sh config
-~/sync_files.sh pull-folder /home/user/myproject
+ibmi-sync config
+ibmi-sync pull-folder /home/user/myproject
 ```
 
 ### Use Cases
@@ -168,14 +114,19 @@ cd ibm-i-file-sync
 Both tools can be installed independently:
 
 ```bash
-# Install Member Sync
-cd ibm-i-sync-git-repo
-./install.sh
-
-# Install File/Folder Sync
-cd ibm-i-file-sync
+# Install IBM i Sync Tool
+cd ibmi-sync
 ./install.sh
 ```
+
+### Cross-Platform Support
+
+The IBM i Sync Tool supports Windows, Linux, and macOS:
+
+- **Windows**: Run `install.bat` or `install.ps1` from PowerShell (if available) or use Git Bash
+- **Linux/macOS**: Run `./install.sh` from bash/zsh
+
+The installation automatically handles platform-specific configurations and creates appropriate wrappers for each system.
 
 ---
 
@@ -187,22 +138,22 @@ Both tools use the same IBM i system:
 
 ### Member Sync Configuration
 
-Edit `~/sync_ibmi.sh`:
-```bash
-IBMI_HOST="<pub400.com>"
-IBMI_USER="<UserID>"
-LIBRARY="<Library>"
-SRCFILE="<SourceFile>"
+Edit `~/.ibmi/config.yaml`:
+```yaml
+host: "<pub400.com>"
+user: "<UserID>"
+library: "<Library>"
+srcfile: "<SourceFile>"
 ```
 
 ### File/Folder Sync Configuration
 
-Edit `~/sync_files.sh`:
-```bash
-IBMI_HOST="<pub400.com>"
-IBMI_USER="<UserID>"
-REMOTE_BASE_DIR="/home/${IBMI_USER}"
-GIT_REPO_URL="https://github.com/RSA-Data-Solutions/IBMi_Tools.git"
+Edit `~/.ibmi/config.yaml`:
+```yaml
+host: "<pub400.com>"
+user: "<UserID>"
+remote_base_dir: "/home/${user}"
+git_repo_url: "https://github.com/RSA-Data-Solutions/IBMi_Tools.git"
 ```
 
 ---
@@ -213,40 +164,40 @@ GIT_REPO_URL="https://github.com/RSA-Data-Solutions/IBMi_Tools.git"
 
 ```bash
 # Pull member
-~/sync_ibmi.sh pull <Member>
+ibmi-sync pull <Member>
 
 # Edit with AI tools
 code ~/ibmi-local/<Member>.rpgle
 
 # Sync and compile
-~/sync_ibmi.sh sync <Member>
+ibmi-sync sync <Member>
 ```
 
 ### File/Folder Development Workflow
 
 ```bash
 # Pull project
-~/sync_files.sh pull-folder /home/user/myproject
+ibmi-sync pull-folder /home/user/myproject
 
 # Edit locally
 code ~/ibmi-files-workspace
 
 # Commit and push to GitHub
-~/sync_files.sh full-sync /home/user/myproject myproject "Updated files"
+ibmi-sync full-sync /home/user/myproject myproject "Updated files"
 ```
 
 ### Combined Workflow
 
 ```bash
 # Work on RPGLE programs
-~/sync_ibmi.sh pull <Member>
+ibmi-sync pull <Member>
 code ~/ibmi-local/<Member>.rpgle
-~/sync_ibmi.sh sync <Member>
+ibmi-sync sync <Member>
 
 # Work on IFS configuration files
-~/sync_files.sh pull-folder /home/user/config
+ibmi-sync pull-folder /home/user/config
 code ~/ibmi-files/config
-~/sync_files.sh push-folder config
+ibmi-sync push-folder config
 ```
 
 ---
@@ -300,3 +251,30 @@ Author: Sasikumar Manickam
 **Owner**: RSA Data Solutions Inc.
 **Author**: Sasikumar Manickam
 **Last Updated**: January 2026
+
+## 🛠️ Troubleshooting
+
+### Windows Issues
+
+If you're running on Windows with Git Bash:
+
+1. Make sure `rsync` is installed (install Git for Windows with rsync option)
+2. Ensure `~/bin` is in your PATH
+3. Verify SSH keys are properly configured
+
+### Common Errors
+
+- `Permission denied (publickey)`: Check SSH keys
+- `command not found`: Ensure PATH is updated
+- `rsync not found`: Install rsync for Git Bash
+
+---
+
+## 📖 Resources
+
+- **Documentation**: https://github.com/RSA-Data-Solutions/IBMi_Tools
+- **Issues**: https://github.com/RSA-Data-Solutions/IBMi_Tools/issues
+- **Repository**: https://github.com/RSA-Data-Solutions/IBMi_Tools.git
+- **Owner**: RSA Data Solutions Inc.
+- **Author**: Sasikumar Manickam
+- **Last Updated**: January 2026

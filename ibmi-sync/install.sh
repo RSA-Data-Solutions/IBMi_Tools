@@ -58,7 +58,12 @@ detect_platform() {
     elif [ "$(uname)" = "Darwin" ]; then
         echo "macos"
     elif [ "$(uname)" = "Linux" ]; then
-        echo "linux"
+        # Check for MSYS/MinGW (Windows Git Bash)
+        if [[ "$(uname -o 2>/dev/null)" == *"MSYS"* ]] || [[ "$(uname -o 2>/dev/null)" == *"MinGW"* ]]; then
+            echo "windows"
+        else
+            echo "linux"
+        fi
     else
         echo "unknown"
     fi
@@ -71,6 +76,9 @@ get_shell_config() {
     elif [ -f "$HOME/.bash_profile" ]; then
         echo "$HOME/.bash_profile"
     elif [ -f "$HOME/.bashrc" ]; then
+        echo "$HOME/.bashrc"
+    else
+        # If no shell config file exists, create .bashrc
         echo "$HOME/.bashrc"
     fi
 }
@@ -159,7 +167,13 @@ install_files() {
     if [ -L "$BIN_DIR/isync" ] || [ -e "$BIN_DIR/isync" ]; then
         rm -f "$BIN_DIR/isync"
     fi
-    ln -s "$BIN_DIR/ibmi-sync" "$BIN_DIR/isync"
+    
+    # Try to create a proper symlink, but fall back to copy on Windows (Git Bash)
+    if ! ln -s "$BIN_DIR/ibmi-sync" "$BIN_DIR/isync" 2>/dev/null; then
+        # If symlink fails, create a copy as fallback (common on Windows Git Bash)
+        cp "$BIN_DIR/ibmi-sync" "$BIN_DIR/isync"
+        print_warning "Created copy instead of symlink (common on Windows Git Bash)"
+    fi
     chmod +x "$BIN_DIR/isync" 2>/dev/null || true
 
     print_success "Files installed to: $INSTALL_PREFIX"
@@ -172,10 +186,10 @@ update_path() {
 
     local shell_config=$(get_shell_config)
 
-    if [ -z "$shell_config" ]; then
-        print_warning "Could not find shell config file"
-        print_warning "Please add $BIN_DIR to your PATH manually"
-        return 0
+    # If shell config file doesn't exist, create it
+    if [ ! -f "$shell_config" ]; then
+        touch "$shell_config"
+        print_warning "Created new shell config file: $shell_config"
     fi
 
     # Check if already in PATH

@@ -9,17 +9,17 @@ default_profile: "production"
 profiles:
   production:
     # IBM i system connection settings
-    host: "<pub400.com>"
-    user: "<UserID>"
+    host: " "
+    user: " "
 
     # Member sync settings (for RPGLE development)
     # Used when working with library/source file/member structure
-    library: "<Library>"
-    srcfile: "<SourceFile>"
+    library: " "
+    srcfile: " "
 
     # File sync settings
     # Base directory where files are synced to/from on IBM i
-    remote_base: "/home/<UserID>"
+    remote_base: "/home/ "
     local_dir: "~/ibmi-sync-data/production"
 
     # Git integration settings (optional)
