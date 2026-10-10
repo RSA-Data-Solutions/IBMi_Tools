@@ -359,9 +359,23 @@ member_compile() {
 
     print_title "Compiling: $library/$member"
 
-    # Execute compilation
-    session_exec "$profile" \
-        "system \"CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${srcfile}) SRCMBR(${member})\" 2>&1"
+    # Check for library list in session context
+    local liblist=""
+    if load_session "$profile" 2>/dev/null && [ -n "$IBMI_SESSION_LIBRARY" ]; then
+        # Use library list from session context if available
+        if [ -n "$IBMI_SESSION_LIBRARY" ]; then
+            liblist="LIBLIST(*LIBL $IBMI_SESSION_LIBRARY)"
+        fi
+    fi
+
+    # Execute compilation with library list if specified
+    if [ -n "$liblist" ]; then
+        session_exec "$profile" \
+            "system \"CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${srcfile}) SRCMBR(${member}) $liblist\" 2>&1"
+    else
+        session_exec "$profile" \
+            "system \"CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${srcfile}) SRCMBR(${member})\" 2>&1"
+    fi
 
     if [ $? -eq 0 ]; then
         print_success "Compilation successful: $member"
