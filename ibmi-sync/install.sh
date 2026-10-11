@@ -7,6 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_PREFIX="${HOME}/.local/bin/ibmi-sync"
 BIN_DIR="${HOME}/bin"
+NON_INTERACTIVE=false
 
 # Color output
 RED='\033[0;31m'
@@ -509,7 +510,27 @@ show_post_install_info() {
 # Main Installation Flow
 # ============================================================================
 
+usage() {
+    echo "Usage: $(basename "$0") [--no-interactive]"
+    echo ""
+    echo "  --no-interactive   Do not prompt; skip old-tool migration and first-time setup"
+    echo "  -h, --help         Show this help"
+}
+
+parse_args() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --no-interactive) NON_INTERACTIVE=true ;;
+            -h|--help) usage; exit 0 ;;
+            *) usage >&2; die "Unknown option: $1" ;;
+        esac
+        shift
+    done
+}
+
 main() {
+    parse_args "$@"
+
     print_header
 
     print_step "IBM i Unified Sync Tool Installer"
@@ -525,16 +546,20 @@ main() {
     update_path
     update_windows_path
     initialize_config
-    migrate_old_tools
+    if [ "$NON_INTERACTIVE" = false ]; then
+        migrate_old_tools
+    fi
     verify_installation
 
     # Offer first-time setup
-    echo ""
-    first_time_setup
+    if [ "$NON_INTERACTIVE" = false ]; then
+        echo ""
+        first_time_setup
+    fi
 
     # Show final info
     show_post_install_info
 }
 
 # Run installation
-main
+main "$@"
