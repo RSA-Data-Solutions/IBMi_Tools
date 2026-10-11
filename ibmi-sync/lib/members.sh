@@ -359,13 +359,23 @@ member_compile() {
 
     print_title "Compiling: $library/$member"
 
-    # Check for library list in session context
+    # Check for library list in session context or profile
     local liblist=""
+    local effective_library=""
+    
+    # Get effective library (session override or profile default)
     if load_session "$profile" 2>/dev/null && [ -n "$IBMI_SESSION_LIBRARY" ]; then
-        # Use library list from session context if available
-        if [ -n "$IBMI_SESSION_LIBRARY" ]; then
-            liblist="LIBLIST(*LIBL $IBMI_SESSION_LIBRARY)"
-        fi
+        # Use session library if set
+        effective_library="$IBMI_SESSION_LIBRARY"
+    else
+        # Use profile library
+        config_load_profile "$profile" 2>/dev/null
+        effective_library="$IBMI_LIBRARY"
+    fi
+    
+    # Build library list - use profile library list + session library override if provided
+    if [ -n "$effective_library" ]; then
+        liblist="LIBLIST(*LIBL $effective_library)"
     fi
 
     # Execute compilation with library list if specified
