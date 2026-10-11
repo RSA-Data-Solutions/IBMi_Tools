@@ -23,7 +23,7 @@ fi
 if [ ! -d "$LIB_DIR" ]; then
     LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
 fi
-VERSION="1.2.0"
+VERSION="1.2.1"
 
 # GitHub repository for version checking
 GITHUB_REPO="RSA-Data-Solutions/IBMi_Tools"
