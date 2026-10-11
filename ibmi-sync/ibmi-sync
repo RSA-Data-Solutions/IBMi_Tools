@@ -23,10 +23,14 @@ fi
 if [ ! -d "$LIB_DIR" ]; then
     LIB_DIR="$(dirname "$SCRIPT_DIR")/lib"
 fi
-VERSION="1.2.0"
+VERSION="1.2.1"
 
 # GitHub repository for version checking
 GITHUB_REPO="RSA-Data-Solutions/IBMi_Tools"
+
+# Startup version check result is cached here and refreshed at most once a day
+VERSION_CACHE_FILE="$HOME/.ibmi/version_check"
+VERSION_CHECK_INTERVAL=86400
 
 # Source all libraries
 source "$LIB_DIR/common.sh"
@@ -162,27 +166,49 @@ EOF
 # Version check function
 # ============================================================================
 
+# Print the latest release version from GitHub (without the leading "v"), or nothing on failure
+fetch_latest_version() {
+    local url="https://api.github.com/repos/$GITHUB_REPO/releases/latest"
+    local response=""
+    if command_exists curl; then
+        response=$(curl -s -m 10 "$url")
+    elif command_exists wget; then
+        response=$(wget -q -T 10 --tries=1 -O- "$url")
+    fi
+    echo "$response" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/^v//'
+}
+
+# Record a check in the cache: "<epoch seconds> <version>" (version empty if the lookup failed)
+save_version_cache() {
+    echo "$(date +%s) $1" > "$VERSION_CACHE_FILE" 2>/dev/null || true
+}
+
 check_for_updates() {
     # Skip version check if debugging or testing
     if [ "${IBMI_DEBUG:-0}" = "1" ]; then
         return 0
     fi
-    
-    # Check if we can access the internet
-    if command_exists curl || command_exists wget; then
-        # Try to get latest version from GitHub
-        local latest_version=""
-        if command_exists curl; then
-            latest_version=$(curl -s -m 10 "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/v//')
-        elif command_exists wget; then
-            latest_version=$(wget -q -T 10 --tries=1 -O- "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/v//')
-        fi
-        
-        # If we got a version and it's different from current
-        if [ -n "$latest_version" ] && [ "$latest_version" != "$VERSION" ]; then
-            print_warning "A newer version ($latest_version) is available. Use 'ibmi-sync upgrade' to upgrade."
-            print_info "To upgrade, run: ibmi-sync upgrade"
-        fi
+
+    if ! command_exists curl && ! command_exists wget; then
+        return 0
+    fi
+
+    # Use the cached result if it is less than a day old
+    local now checked_at="" latest_version=""
+    now=$(date +%s)
+    if [ -f "$VERSION_CACHE_FILE" ]; then
+        read -r checked_at latest_version < "$VERSION_CACHE_FILE" || true
+    fi
+    if ! [[ "$checked_at" =~ ^[0-9]+$ ]] || [ $((now - checked_at)) -ge "$VERSION_CHECK_INTERVAL" ] || [ "$checked_at" -gt "$now" ]; then
+        # Failed lookups are cached too, so an offline machine is not delayed on every command
+        latest_version=$(fetch_latest_version)
+        save_version_cache "$latest_version"
+    fi
+
+    # If we got a version and it's different from current
+    if [ -n "$latest_version" ] && [ "$latest_version" != "$VERSION" ]; then
+        print_warning "A newer version ($latest_version) is available. Use 'ibmi-sync upgrade' to upgrade."
+        print_info "To upgrade, run: ibmi-sync upgrade"
     fi
 }
 
@@ -199,13 +225,10 @@ cmd_upgrade() {
         die "Neither curl nor wget found. Please install one to check for updates."
     fi
     
-    # Get latest version from GitHub
-    local latest_version=""
-    if command_exists curl; then
-        latest_version=$(curl -s -m 10 "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/v//')
-    elif command_exists wget; then
-        latest_version=$(wget -q -T 10 --tries=1 -O- "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/v//')
-    fi
+    # Get latest version from GitHub (always fresh; refreshes the startup check's cache)
+    local latest_version
+    latest_version=$(fetch_latest_version)
+    save_version_cache "$latest_version"
     
     if [ -z "$latest_version" ]; then
         die "Could not retrieve latest version information from GitHub"

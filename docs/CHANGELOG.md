@@ -2,6 +2,14 @@
 
 All notable changes to IBM i Sync Tool will be documented in this file.
 
+## [1.2.1] - 2026-10-11
+
+### Changed
+- The startup check for new releases runs at most once a day. Its result is cached in `~/.ibmi/version_check`.
+  Before, every command called the GitHub API, which added up to 10s per command when offline and could exceed
+  GitHub's 60 requests/hour limit for unauthenticated calls on shared IPs. Failed lookups are cached too.
+  `ibmi-sync upgrade` always asks GitHub directly.
+
 ## [1.2.0] - 2026-10-08
 
 ### Windows 11 / Azure Virtual Desktop support

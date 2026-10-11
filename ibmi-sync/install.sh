@@ -534,7 +534,7 @@ main() {
     print_header
 
     print_step "IBM i Unified Sync Tool Installer"
-    echo "Version: 1.2.0"
+    echo "Version: 1.2.1"
     echo "Platform: $PLATFORM"
     echo ""
 
