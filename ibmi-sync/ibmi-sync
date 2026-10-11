@@ -175,7 +175,7 @@ check_for_updates() {
         if command_exists curl; then
             latest_version=$(curl -s -m 10 "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/v//')
         elif command_exists wget; then
-            latest_version=$(wget -qO- "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/v//')
+            latest_version=$(wget -q -T 10 --tries=1 -O- "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/v//')
         fi
         
         # If we got a version and it's different from current
@@ -204,7 +204,7 @@ cmd_upgrade() {
     if command_exists curl; then
         latest_version=$(curl -s -m 10 "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/v//')
     elif command_exists wget; then
-        latest_version=$(wget -qO- "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/v//')
+        latest_version=$(wget -q -T 10 --tries=1 -O- "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4 | sed 's/v//')
     fi
     
     if [ -z "$latest_version" ]; then
