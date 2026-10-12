@@ -10,7 +10,18 @@ All notable changes to IBM i Sync Tool will be documented in this file.
   GitHub's 60 requests/hour limit for unauthenticated calls on shared IPs. Failed lookups are cached too.
   `ibmi-sync upgrade` always asks GitHub directly.
 
-## [1.2.0] - 2026-10-08
+## [1.2.0] - 2026-10-11
+
+### Added
+- `ibmi-sync upgrade` checks GitHub for the latest release, asks for confirmation, downloads it, and reinstalls
+  with `install.sh --no-interactive`. Every command also prints a notice when a newer release exists (skipped
+  when `IBMI_DEBUG=1`; limited to once a day in 1.2.1).
+- `install.sh --no-interactive` installs without prompting: it skips the old-tool migration and first-time setup.
+  `install.sh --help` shows the options, and an unknown option exits with status 1.
+
+### Changed
+- `member compile` adds `LIBLIST(*LIBL <library>)` to the `CRTBNDRPG` command, using the session library
+  (`isync session set --library=LIB`) or, if none is set, the profile library (#6, #8).
 
 ### Windows 11 / Azure Virtual Desktop support
 - `.gitattributes` keeps the shell scripts LF on Windows; Git for Windows' default `core.autocrlf=true`
