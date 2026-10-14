@@ -62,6 +62,7 @@ COMMANDS:
   member sync <member>              Push and compile member
   member compile <member>           Compile member on IBM i
   member create <member> [srctype]  Create new member (auto-detects from file extension)
+  member create-batch <srcfile> <srctype> <member1> <member2> ...  Create multiple members
   member list                       List all members
   member pull-all                   Pull all members
   member info <member>              Show member information
@@ -368,6 +369,10 @@ cmd_member() {
         create)
             [ $# -lt 1 ] && die "Member name required"
             member_create "${IBMI_PROFILE:-$(get_current_profile)}" "$1" "${2:-}"  # empty: detect from the local file
+            ;;
+        create-batch)
+            [ $# -lt 3 ] && die "Need at least srcfile, srctype, and one member"
+            member_create_batch "${IBMI_PROFILE:-$(get_current_profile)}" "$1" "$2" "${@:3}"
             ;;
         list)
             member_list "${IBMI_PROFILE:-$(get_current_profile)}"

@@ -93,25 +93,53 @@ isync member push NEWPROG
 
 ---
 
-### 4. Smart File Extensions
+### 4. Batch Create Command
+
+**Create Multiple Members at Once:**
+
+```bash
+# Create multiple members
+isync batch create --library=TESTLIB --srcfile=QRPGLESRC --srctype=RPGLE MEMBER1 MEMBER2 MEMBER3
+
+# Create members without specifying source type
+isync batch create --library=TESTLIB --srcfile=QCLLESRC MEMBER1 MEMBER2
+```
+
+**Benefits:**
+- Reduce repetitive setup for multiple members
+- Create members in bulk for development scenarios
+- Maintain consistent source types for all members
+
+**Workflow:**
+```bash
+# Create multiple RPGLE members at once
+isync batch create --library=DEVLIB --srcfile=QRPGLESRC --srctype=RPGLE PROG1 PROG2 PROG3
+
+# Create multiple CL members
+isync batch create --library=DEVLIB --srcfile=QCLLESRC CLPROG1 CLPROG2
+```
+
+---
+
+### 5. Smart File Extensions
 
 **Automatic Extension Detection:**
 
 Member is pulled with correct extension based on source file name:
 
 | Source File      | Extension | Example Output      |
-|-----------------|-----------|---------------------|
-| QRPGLESRC       | .rpgle    | MYPROG.rpgle        |
-| QRPGSRC         | .rpg      | MYPROG.rpg          |
-| QCLLESRC        | .clle     | MYPROG.clle         |
-| QCLSRC          | .clp      | MYPROG.clp          |
-| QCMDSRC         | .cmd      | MYPROG.cmd          |
-| QDDSSRC         | .dds      | MYPROG.dds          |
-| QSQLSRC         | .sql      | MYPROG.sql          |
-| SQLDMLSRC       | .sqldml   | MYPROG.sqldml       |
-| SQLINDSRC       | .txt      | MYPROG.txt          |
-| SQLTBLSRC       | .txt      | MYPROG.txt          |
-| Other           | .txt      | MYPROG.txt          |
+|------------------|-----------|---------------------|
+| QRPGLESRC        | .rpgle    | MYPROG.rpgle        |
+| QRPGSRC          | .rpg      | MYPROG.rpg          |
+| QCLLESRC         | .clle     | MYPROG.clle         |
+| QCLSRC           | .clp      | MYPROG.clp          |
+| QCMDSRC          | .cmd      | MYPROG.cmd          |
+| QDDSSRC          | .dds      | MYPROG.dds          |
+| QSQLSRC          | .sql      | MYPROG.sql          |
+| SQLDMLSRC        | .sqldml   | MYPROG.sqldml       |
+| SQLINDSRC        | .txt      | MYPROG.txt          |
+| SQLTBLSRC        | .txt      | MYPROG.txt          |
+| Other            | .txt      | MYPROG.txt          |
 
 **Benefits:**
 - Correct syntax highlighting in editors

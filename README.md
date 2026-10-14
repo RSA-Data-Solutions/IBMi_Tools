@@ -11,7 +11,7 @@
 `ibmi-sync` (short name `isync`) keeps your IBM i source and IFS files in step with a local folder, so you can
 edit with VS Code or AI tools and use Git:
 
-- **Members** (library / source file / member): pull, push, compile, create, compare, list, search.
+- **Members** (library / source file / member): pull, push, compile, create, compare, list, search, create-batch.
   Transfers use the IBM i **FTP** server, which converts EBCDIC ↔ ASCII for you.
 - **IFS files and folders**: pull, push and sync over **SSH**.
 - **Git**: init, commit, push, pull, log and diff for the synced folder.
