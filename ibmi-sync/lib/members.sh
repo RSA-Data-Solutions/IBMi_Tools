@@ -826,7 +826,48 @@ member_push_batch() {
     return 0
 }
 
-# ============================================================================
+# Batch create multiple members
+member_create_batch() {
+    local profile=$1
+    local srcfile=$2
+    local srctype=$3
+    shift 3
+    local -a members=("$@")
+
+    if [ ${#members[@]} -eq 0 ]; then
+        die "At least one member required"
+    fi
+
+    config_load_profile "$profile"
+
+    # Get effective library (command-line > session > profile)
+    local library="${IBMI_OVERRIDE_LIBRARY:-$(get_effective_library "$profile")}"
+
+    print_title "Creating ${#members[@]} member(s) in $library/$srcfile..."
+
+    local count=0
+    local failed=0
+
+    for member in "${members[@]}"; do
+        # Create member with source type
+        if member_create "$profile" "$member" "$srctype"; then
+            ((count++))
+        else
+            ((failed++))
+        fi
+    done
+
+    print_separator
+    print_success "Created $count member(s)"
+    if [ $failed -gt 0 ]; then
+        print_warning "Failed: $failed member(s)"
+        return 1
+    fi
+
+    return 0
+}
+
+# ============================================================================ 
 # Export functions
 # ============================================================================
 
@@ -840,3 +881,6 @@ export -f member_info
 export -f member_delete
 export -f member_search
 export -f member_compare
+export -f member_create
+export -f member_create_batch
+export -f member_push_batch
