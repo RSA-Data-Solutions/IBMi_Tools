@@ -227,7 +227,7 @@ config_get() {
             in_profile = 1
             next
         }
-        /^  [a-zA-Z_]+:$/ && in_profile {
+        /^  [a-zA-Z0-9_]+:$/ && in_profile {
             in_profile = 0
         }
         in_profile && $1 ~ /^'"$key"':$/ {
