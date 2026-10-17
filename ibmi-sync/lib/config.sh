@@ -231,9 +231,9 @@ config_get() {
             in_profile = 0
         }
         in_profile && $1 ~ /^'"$key"':$/ {
-            gsub(/\r/, "");
-            sub(/^[^:]*: */, "");
-            gsub(/"/, "");
+            gsub(/\r/, "")
+            sub(/^[^:]*: */, "")
+            gsub(/"/, "")
             print
         }
     ' "$CONFIG_FILE"
@@ -260,6 +260,7 @@ config_load_profile() {
     export IBMI_LOCAL_DIR=$(expand_path "$(config_get "$profile" "local_dir")")
     export IBMI_GIT_REPO=$(config_get "$profile" "git_repo")
     export IBMI_GIT_BRANCH=$(config_get "$profile" "git_branch")
+    export IBMI_LIBLIST=$(config_get "$profile" "liblist")
 
     # Validate required values: empty, blank or "<placeholder>" means the profile was never filled in
     local field value

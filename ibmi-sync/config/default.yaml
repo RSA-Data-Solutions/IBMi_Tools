@@ -30,16 +30,18 @@ profiles:
     description: "Production IBM i system"
 
   # Example: Development profile
-  # development:
-  #   host: "dev-as400"
-  #   user: "DEVUSER"
-  #   library: "DEVLIB"
-  #   srcfile: "QRPGLESRC"
-  #   remote_base: "/home/DEVUSER"
-  #   local_dir: "~/ibmi-sync-data/development"
-  #   git_repo: "https://github.com/org/dev-repo.git"
-  #   git_branch: "develop"
-  #   description: "Development IBM i system"
+  development:
+    # IBM i system connection settings
+    host: "dev-as400"
+    user: "DEVUSER"
+    library: "DEVLIB"
+    srcfile: "QRPGLESRC"
+    remote_base: "/home/DEVUSER"
+    local_dir: "~/ibmi-sync-data/development"
+    git_repo: "https://github.com/org/dev-repo.git"
+    git_branch: "develop"
+    description: "Development IBM i system"
+    liblist: ["DEVLIB", "ANOTHERLIB"]
 
 # SSH session management settings
 session:
