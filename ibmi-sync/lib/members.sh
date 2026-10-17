@@ -375,7 +375,21 @@ member_compile() {
     
     # Build library list - use profile library list + session library override if provided
     if [ -n "$effective_library" ]; then
-        liblist="LIBLIST(*LIBL $effective_library)"
+        # Check if we have a liblist defined in the profile
+        if [ -n "$IBMI_LIBLIST" ]; then
+            # Format liblist as required by IBM i - this is a comma-separated list
+            local liblist_items=""
+            # Process the liblist array - it's in YAML format like ["LIB1", "LIB2"]
+            liblist_items=$(echo "$IBMI_LIBLIST" | sed 's/[][]//g' | tr ',' ' ')
+            if [ -n "$liblist_items" ]; then
+                liblist="LIBLIST(*LIBL $effective_library $liblist_items)"
+            else
+                liblist="LIBLIST(*LIBL $effective_library)"
+            fi
+        else
+            # Use only the effective library if no liblist is defined
+            liblist="LIBLIST(*LIBL $effective_library)"
+        fi
     fi
 
     # Execute compilation with library list if specified
